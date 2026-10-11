@@ -35,15 +35,20 @@ function xmlLocs(xml) {
 async function getProductUrls() {
   const sitemap = await getText(`${ORIGIN}/sitemap.xml`);
   const sitemapUrls = xmlLocs(sitemap);
+  const directProducts = sitemapUrls.filter((url) => {
+    try { return new URL(url).pathname.startsWith("/products/"); } catch { return false; }
+  });
   const productSitemaps = sitemapUrls.filter((url) =>
     /sitemap.*product|product.*sitemap/i.test(url)
   );
   const candidates = productSitemaps.length ? productSitemaps : [`${ORIGIN}/sitemap_products_1.xml`];
-  const productUrls = [];
+  const productUrls = [...directProducts];
   for (const url of candidates) {
     try {
       const xml = await getText(url);
-      productUrls.push(...xmlLocs(xml).filter((u) => new URL(u).pathname.startsWith("/products/")));
+      productUrls.push(...xmlLocs(xml).filter((u) => {
+        try { return new URL(u).pathname.startsWith("/products/"); } catch { return false; }
+      }));
       await sleep(500);
     } catch (error) {
       console.warn(`Sitemap not available: ${url} (${error.message})`);
