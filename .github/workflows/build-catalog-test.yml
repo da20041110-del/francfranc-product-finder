@@ -29,6 +29,9 @@ jobs:
           node-version: "22"
       - name: Fetch a small sample from the official site
         run: node scripts/build-catalog.mjs --limit=${{ inputs.limit || '5' }}
+      - name: Print catalog sample for verification
+        run: |
+          node --input-type=module -e "import fs from 'node:fs'; const c=JSON.parse(fs.readFileSync('catalog.json','utf8')); console.log(JSON.stringify({attempted:c.attempted,found:c.found,products:c.products.map(p=>({title:p.title,price:p.price,imagePresent:Boolean(p.image),url:p.url,itemCode:p.itemCode,verifiedCode:p.verifiedCode}))},null,2))"
       - name: Save catalog as a downloadable artifact
         uses: actions/upload-artifact@v4
         with:
