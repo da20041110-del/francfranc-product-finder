@@ -1,6 +1,10 @@
 name: Build official product catalog (test)
 
 on:
+  push:
+    paths:
+      - 'scripts/build-catalog.mjs'
+      - '.github/workflows/build-catalog-test.yml'
   workflow_dispatch:
     inputs:
       limit:
@@ -24,7 +28,7 @@ jobs:
         with:
           node-version: "22"
       - name: Fetch a small sample from the official site
-        run: node scripts/build-catalog.mjs --limit=${{ inputs.limit }}
+        run: node scripts/build-catalog.mjs --limit=${{ inputs.limit || '5' }}
       - name: Save catalog as a downloadable artifact
         uses: actions/upload-artifact@v4
         with:
