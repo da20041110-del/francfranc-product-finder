@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: "Number of product pages to test (start with 5)"
+        description: "Number of product pages to test"
         required: true
-        default: "5"
+        default: "20"
         type: string
 
 permissions:
@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: "22"
       - name: Fetch a small sample from the official site
-        run: node scripts/build-catalog.mjs --limit=${{ inputs.limit || '5' }}
+        run: node scripts/build-catalog.mjs --limit=${{ inputs.limit || '20' }}
       - name: Print catalog sample for verification
         run: |
           node --input-type=module -e "import fs from 'node:fs'; const c=JSON.parse(fs.readFileSync('catalog.json','utf8')); console.log(JSON.stringify({attempted:c.attempted,found:c.found,products:c.products.map(p=>({title:p.title,price:p.price,imagePresent:Boolean(p.image),url:p.url,itemCode:p.itemCode,verifiedCode:p.verifiedCode}))},null,2))"
