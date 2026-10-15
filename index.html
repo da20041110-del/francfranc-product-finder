@@ -201,20 +201,27 @@ search.addEventListener('click',async()=>{
     photoStatus.textContent='撮影写真を解析中…';
     const queryVector=await embedImage(extractor,photoUrl);
     const maxToCheck=Math.min(candidates.length,100);
-    for(let i=0;i<maxToCheck;i++){
-      const p=candidates[i];
-      let productUrl='';
-      try{
-        productUrl=await fetchImageBlobUrl(p.image);
-        const vector=await embedImage(extractor,productUrl);
-        scored.push({product:p,score:cosine(queryVector,vector)});
-      }catch(e){
-        console.warn('商品画像を比較できませんでした:',p.url,e);
-      }finally{
-        if(productUrl)URL.revokeObjectURL(productUrl);
-      }
-      if((i+1)%5===0||i===maxToCheck-1){
-        photoStatus.textContent=`公式画像を比較中… ${i+1}/${maxToCheck}件`;
+    const batchSize=4;
+    let completed=0;
+    for(let start=0;start<maxToCheck;start+=batchSize){
+      const batch=candidates.slice(start,Math.min(start+batchSize,maxToCheck));
+      const fetched=await Promise.all(batch.map(async p=>{
+        try{return {product:p,url:await fetchImageBlobUrl(p.image)};}
+        catch(e){console.warn('商品画像を取得できませんでした:',p.url,e);return {product:p,url:''};}
+      }));
+      for(const item of fetched){
+        if(item.url){
+          try{
+            const vector=await embedImage(extractor,item.url);
+            scored.push({product:item.product,score:cosine(queryVector,vector)});
+          }catch(e){
+            console.warn('商品画像を比較できませんでした:',item.product.url,e);
+          }finally{
+            URL.revokeObjectURL(item.url);
+          }
+        }
+        completed++;
+        photoStatus.textContent=`公式画像を比較中… ${completed}/${maxToCheck}件（画像取得は最大${batchSize}件ずつ並行処理）`;
       }
     }
     scored.sort((a,b)=>b.score-a.score);
