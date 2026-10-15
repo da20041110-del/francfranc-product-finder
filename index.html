@@ -106,8 +106,102 @@ file.addEventListener('change',()=>{
   search.disabled=false;
   photoStatus.textContent='写真を読み込みました。写真検索のAIはまだ未接続のため、商品名の特定はできません。';
 });
-search.addEventListener('click',()=>{
-  photoStatus.textContent='写真の表示は確認できましたが、商品データとの照合機能はまだありません。次の開発段階で商品画像カタログと検索処理を接続します。';
+let imageSearchBusy=false;
+let imageExtractorPromise=null;
+async function getImageExtractor(){
+  if(!imageExtractorPromise){
+    imageExtractorPromise=(async()=>{
+      photoStatus.textContent='画像検索モデルを読み込み中です。初回はモデルのダウンロードに時間がかかります…';
+      const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+      env.allowLocalModels=false;
+      env.useBrowserCache=true;
+      return await pipeline('image-feature-extraction','Xenova/clip-vit-base-patch32');
+    })();
+  }
+  return imageExtractorPromise;
+}
+function vectorFromTensor(output){
+  const data=output?.data;
+  if(!data||!data.length)throw new Error('画像の特徴量を取得できませんでした。');
+  let sum=0;
+  for(let i=0;i<data.length;i++)sum+=data[i]*data[i];
+  const norm=Math.sqrt(sum)||1;
+  return Array.from(data,v=>v/norm);
+}
+async function embedImage(extractor,source){
+  const result=await extractor(source);
+  return vectorFromTensor(result);
+}
+function cosine(a,b){
+  let score=0;
+  const n=Math.min(a.length,b.length);
+  for(let i=0;i<n;i++)score+=a[i]*b[i];
+  return score;
+}
+async function fetchImageBlobUrl(url){
+  const response=await fetch(url,{mode:'cors'});
+  if(!response.ok)throw new Error('商品画像を取得できませんでした');
+  return URL.createObjectURL(await response.blob());
+}
+search.addEventListener('click',async()=>{
+  if(imageSearchBusy)return;
+  const photoFile=file.files?.[0];
+  if(!photoFile){photoStatus.textContent='先に商品写真を選んでください。';return;}
+  if(!catalogProducts.length){photoStatus.textContent='検索用カタログがまだありません。先にカタログ更新を実行してください。';return;}
+  const candidates=catalogProducts.filter(p=>p.image&&p.title);
+  if(!candidates.length){photoStatus.textContent='カタログに比較できる商品画像がありません。';return;}
+  imageSearchBusy=true;search.disabled=true;
+  const photoUrl=URL.createObjectURL(photoFile);
+  const scored=[];
+  try{
+    const extractor=await getImageExtractor();
+    photoStatus.textContent='撮影写真を解析中…';
+    const queryVector=await embedImage(extractor,photoUrl);
+    const maxToCheck=Math.min(candidates.length,100);
+    for(let i=0;i<maxToCheck;i++){
+      const p=candidates[i];
+      let productUrl='';
+      try{
+        productUrl=await fetchImageBlobUrl(p.image);
+        const vector=await embedImage(extractor,productUrl);
+        scored.push({product:p,score:cosine(queryVector,vector)});
+      }catch(e){
+        console.warn('商品画像を比較できませんでした:',p.url,e);
+      }finally{
+        if(productUrl)URL.revokeObjectURL(productUrl);
+      }
+      if((i+1)%5===0||i===maxToCheck-1){
+        photoStatus.textContent=`公式画像を比較中… ${i+1}/${maxToCheck}件`;
+      }
+    }
+    scored.sort((a,b)=>b.score-a.score);
+    catalogResults.innerHTML='';
+    const top=scored.slice(0,5);
+    if(!top.length)throw new Error('公式商品画像を取得できませんでした。サイト側の画像アクセス制限（CORS）の可能性があります。');
+    catalogStatus.textContent='写真検索の候補（類似度順）。必ず商品を確認してください。';
+    for(const item of top){
+      const p=item.product;
+      const card=document.createElement('article');card.className='card';card.style.marginTop='12px';
+      const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
+      card.innerHTML='<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4"><h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(p.itemCode||'未取得')+'</p><p>画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
+      card.querySelector('.chooseProduct').addEventListener('click',()=>{
+        const code=String(p.itemCode||'');
+        if(/^\\d{13}$/.test(code)){
+          jan.value=code;jan.dispatchEvent(new Event('input'));
+        }
+        card.querySelector('.chooseProduct').textContent='選択しました';
+        photoStatus.textContent='選択した商品を確認してください。品番が13桁の場合はバーコード欄に入力しました。';
+      });
+      catalogResults.appendChild(card);
+    }
+    photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件です。上位候補から商品を確認してください。`;
+  }catch(error){
+    console.error(error);
+    photoStatus.textContent='画像検索を完了できませんでした。'+(error?.message||'画像モデルまたは公式画像にアクセスできない可能性があります。');
+  }finally{
+    URL.revokeObjectURL(photoUrl);
+    imageSearchBusy=false;search.disabled=false;
+  }
 });
 const jan=document.getElementById('jan');
 const svg=document.getElementById('barcode');
