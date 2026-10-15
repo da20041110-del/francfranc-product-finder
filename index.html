@@ -50,16 +50,16 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 
 <section class="card">
 <h2>掲載商品を確認（仮）</h2>
-<p class="note">公式サイトから取得した最新カタログを読み込み、商品名・品番で候補を絞り込めます。写真だけでの自動照合は次の段階で接続します。</p>
+<p class="note">商品名・品番で候補を探せます。写真から探す場合は、上の写真検索を使ってください。</p>
 <label for="catalogQuery">商品名・品番で検索</label>
 <input id="catalogQuery" type="text" autocomplete="off" placeholder="例：ワイヤーキッチンラック / 1101070063809">
 <div class="status" id="catalogStatus" role="status">カタログを読み込み中です…</div>
 <div id="catalogResults"></div>
 </section>
 
-<section class="card">
-<h2>バーコード表示テスト</h2>
-<p class="note">公式商品ページの「品番」にある13桁の数字を入力すると、EAN-13バーコードを生成します。数字が未確認の商品では使わないでください。</p>
+<section class="card" id="barcodeCard" style="display:none">
+<h2>選択した商品のバーコード</h2>
+<p class="note">選んだ商品の品番を確認してください。バーコードは正しい商品と一致することを確認してからレジで使用してください。</p>
 <label for="jan">品番（13桁）</label>
 <input id="jan" type="text" inputmode="numeric" autocomplete="off" maxlength="13" placeholder="例：4901234567894">
 <div class="status" id="barcodeStatus" role="status">品番を入力すると、チェックデジットを確認してバーコードを表示します。</div>
@@ -92,9 +92,32 @@ function renderCatalog(){
     const image=p.image?'<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4">':'';
     const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
     const code=p.itemCode?escapeHtml(p.itemCode):'品番未取得';
-    card.innerHTML=image+'<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+code+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p>';
+    card.innerHTML=image+'<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+code+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
+    card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
     catalogResults.appendChild(card);
   }
+}
+function selectProduct(p,card){
+  const code=String(p.itemCode||'');
+  const barcodeCard=document.getElementById('barcodeCard');
+  barcodeCard.style.display='block';
+  if(/^\d{13}$/.test(code)){
+    jan.value=code;
+    jan.dispatchEvent(new Event('input'));
+    barcodeStatus.textContent=validJan(code)
+      ? '選択した商品の品番です。商品と一致することを確認してください。'
+      : '品番は13桁ですが、チェックデジットが一致しません。公式商品ページで確認してください。';
+  }else{
+    jan.value='';
+    jan.dispatchEvent(new Event('input'));
+    barcodeStatus.textContent='この候補から13桁の品番を取得できませんでした。公式商品ページで確認してください。';
+  }
+  if(card){
+    const btn=card.querySelector('.chooseProduct');
+    if(btn)btn.textContent='選択しました';
+  }
+  photoStatus.textContent='商品を選択しました。商品名・価格・品番・バーコードを確認してください。';
+  barcodeCard.scrollIntoView({behavior:'smooth',block:'start'});
 }
 catalogQuery.addEventListener('input',renderCatalog);
 fetch('./catalog.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('catalog.json not found');return r.json();}).then(data=>{
@@ -122,7 +145,7 @@ function handlePhotoChange(input){
   photo.style.display='block';
   search.disabled=false;
   selectedPhotoFile=f;
-  photoStatus.textContent='写真を読み込みました。写真検索のAIはまだ未接続のため、商品名の特定はできません。';
+  photoStatus.textContent='写真を読み込みました。「商品を検索する」を押すと、公式掲載商品の画像と比較します。';
 }
 file.addEventListener('change',()=>handlePhotoChange(file));
 libraryFile.addEventListener('change',()=>handlePhotoChange(libraryFile));
@@ -204,16 +227,7 @@ search.addEventListener('click',async()=>{
       const card=document.createElement('article');card.className='card';card.style.marginTop='12px';
       const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
       card.innerHTML='<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4"><h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(p.itemCode||'未取得')+'</p><p>画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
-      card.querySelector('.chooseProduct').addEventListener('click',()=>{
-        const code=String(p.itemCode||'');
-        if(/^\d{13}$/.test(code)){
-          jan.value=code;jan.dispatchEvent(new Event('input'));
-          document.getElementById('jan').closest('.card').scrollIntoView({behavior:'smooth',block:'start'});
-          document.getElementById('jan').focus({preventScroll:true});
-        }
-        card.querySelector('.chooseProduct').textContent='選択しました';
-        photoStatus.textContent='選択した商品を確認してください。品番が13桁の場合はバーコード欄に入力しました。';
-      });
+      card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
       catalogResults.appendChild(card);
     }
     photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件です。上位候補から商品を確認してください。`;
