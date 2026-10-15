@@ -1,6 +1,11 @@
 name: Refresh current Francfranc catalog
 
 on:
+  # Automatically run a small catalog test after scraper/workflow changes.
+  push:
+    paths:
+      - 'scripts/build-catalog.mjs'
+      - '.github/workflows/refresh-current-catalog.yml'
   schedule:
     - cron: '23 18 * * *' # 03:23 JST daily
   workflow_dispatch:
@@ -23,7 +28,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Fetch products currently listed in the official sitemap
+      - name: Fetch a small test catalog after code changes
+        if: github.event_name == 'push'
+        run: node scripts/build-catalog.mjs --limit=100
+      - name: Fetch all products for scheduled or manual refresh
+        if: github.event_name != 'push'
         run: node scripts/build-catalog.mjs --all
       - name: Summarize catalog
         run: |
