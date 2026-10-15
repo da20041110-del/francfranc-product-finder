@@ -44,6 +44,15 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 <div class="status" id="photoStatus" role="status">写真検索のAIはまだ未接続です。現在は写真の選択・表示を確認できます。</div>
 
 <section class="card">
+<h2>掲載商品を確認（仮）</h2>
+<p class="note">公式サイトから取得した最新カタログを読み込み、商品名・品番で候補を絞り込めます。写真だけでの自動照合は次の段階で接続します。</p>
+<label for="catalogQuery">商品名・品番で検索</label>
+<input id="catalogQuery" type="text" autocomplete="off" placeholder="例：ワイヤーキッチンラック / 1101070063809">
+<div class="status" id="catalogStatus" role="status">カタログを読み込み中です…</div>
+<div id="catalogResults"></div>
+</section>
+
+<section class="card">
 <h2>バーコード表示テスト</h2>
 <p class="note">公式商品ページの「品番」にある13桁の数字を入力すると、EAN-13バーコードを生成します。数字が未確認の商品では使わないでください。</p>
 <label for="jan">品番（13桁）</label>
@@ -54,6 +63,34 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 </main>
 <footer>社内利用を想定した試作画面 · 未確認コードでのレジ処理は禁止</footer>
 <script>
+const catalogQuery=document.getElementById('catalogQuery');
+const catalogStatus=document.getElementById('catalogStatus');
+const catalogResults=document.getElementById('catalogResults');
+let catalogProducts=[];
+function escapeHtml(value=''){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function renderCatalog(){
+  const q=(catalogQuery.value||'').trim().toLocaleLowerCase('ja');
+  const found=catalogProducts.filter(p=>!q||String(p.title||'').toLocaleLowerCase('ja').includes(q)||String(p.itemCode||'').includes(q)).slice(0,30);
+  catalogResults.innerHTML='';
+  if(!found.length){catalogStatus.textContent=q?'一致する掲載商品が見つかりません。':'表示できる商品がありません。';return;}
+  catalogStatus.textContent=`候補 ${found.length}件を表示中（検索結果は最大30件）`;
+  for(const p of found){
+    const card=document.createElement('article');
+    card.className='card';
+    card.style.marginTop='12px';
+    const image=p.image?'<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4">':'';
+    const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
+    const code=p.itemCode?escapeHtml(p.itemCode):'品番未取得';
+    card.innerHTML=image+'<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+code+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p>';
+    catalogResults.appendChild(card);
+  }
+}
+catalogQuery.addEventListener('input',renderCatalog);
+fetch('./catalog.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('catalog.json not found');return r.json();}).then(data=>{
+  catalogProducts=Array.isArray(data.products)?data.products:[];
+  catalogStatus.textContent=`カタログ取得日時：${data.generatedAt||'不明'} / 取得URL ${data.attempted??'?'}件、商品データ ${catalogProducts.length}件`;
+  renderCatalog();
+}).catch(()=>{catalogStatus.textContent='まだ公開カタログがありません。GitHub Actionsで「Refresh current Francfranc catalog」を実行すると、取得後にここへ表示されます。';});
 const file=document.getElementById('file');
 const photo=document.getElementById('photo');
 const search=document.getElementById('search');
