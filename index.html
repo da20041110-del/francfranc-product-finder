@@ -16,6 +16,8 @@ h2{font-size:18px}
 .upload{display:block;background:white;border:2px dashed #c9bdb5;border-radius:14px;padding:24px;text-align:center;cursor:pointer}
 .upload strong{display:block;margin-bottom:8px}
 #photo{width:100%;margin-top:16px;border-radius:10px;display:none;max-height:320px;object-fit:contain;background:#eee}
+#catalogResults:empty{display:none}
+#catalogResults:not(:empty){display:block}
 button{width:100%;border:0;border-radius:10px;padding:15px;margin-top:14px;background:#333;color:white;font-size:16px;cursor:pointer}
 button:disabled{opacity:.5}
 .card{background:white;border-radius:14px;padding:18px;margin-top:22px}
@@ -75,9 +77,11 @@ function renderCatalog(){
   const q=(catalogQuery.value||'').trim().toLocaleLowerCase('ja');
   catalogResults.innerHTML='';
   if(!q){
+    catalogResults.style.display='none';
     catalogStatus.textContent='商品名・品番を入力すると候補が表示されます。写真から探す場合は、上の「商品を検索する」を使ってください。';
     return;
   }
+  catalogResults.style.display='block';
   const found=catalogProducts.filter(p=>String(p.title||'').toLocaleLowerCase('ja').includes(q)||String(p.itemCode||'').includes(q)).slice(0,30);
   if(!found.length){catalogStatus.textContent='一致する掲載商品が見つかりません。';return;}
   catalogStatus.textContent=`候補 ${found.length}件を表示中（検索結果は最大30件）`;
