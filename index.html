@@ -73,9 +73,13 @@ let catalogProducts=[];
 function escapeHtml(value=''){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function renderCatalog(){
   const q=(catalogQuery.value||'').trim().toLocaleLowerCase('ja');
-  const found=catalogProducts.filter(p=>!q||String(p.title||'').toLocaleLowerCase('ja').includes(q)||String(p.itemCode||'').includes(q)).slice(0,30);
   catalogResults.innerHTML='';
-  if(!found.length){catalogStatus.textContent=q?'一致する掲載商品が見つかりません。':'表示できる商品がありません。';return;}
+  if(!q){
+    catalogStatus.textContent='商品名・品番を入力すると候補が表示されます。写真から探す場合は、上の「商品を検索する」を使ってください。';
+    return;
+  }
+  const found=catalogProducts.filter(p=>String(p.title||'').toLocaleLowerCase('ja').includes(q)||String(p.itemCode||'').includes(q)).slice(0,30);
+  if(!found.length){catalogStatus.textContent='一致する掲載商品が見つかりません。';return;}
   catalogStatus.textContent=`候補 ${found.length}件を表示中（検索結果は最大30件）`;
   for(const p of found){
     const card=document.createElement('article');
