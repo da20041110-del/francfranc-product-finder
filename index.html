@@ -198,8 +198,10 @@ search.addEventListener('click',async()=>{
       card.innerHTML='<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4"><h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(p.itemCode||'未取得')+'</p><p>画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
       card.querySelector('.chooseProduct').addEventListener('click',()=>{
         const code=String(p.itemCode||'');
-        if(/^\\d{13}$/.test(code)){
+        if(/^\d{13}$/.test(code)){
           jan.value=code;jan.dispatchEvent(new Event('input'));
+          document.getElementById('jan').closest('.card').scrollIntoView({behavior:'smooth',block:'start'});
+          document.getElementById('jan').focus({preventScroll:true});
         }
         card.querySelector('.chooseProduct').textContent='選択しました';
         photoStatus.textContent='選択した商品を確認してください。品番が13桁の場合はバーコード欄に入力しました。';
