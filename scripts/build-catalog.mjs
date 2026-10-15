@@ -33,28 +33,35 @@ function xmlLocs(xml) {
 }
 
 async function getProductUrls() {
-  const sitemap = await getText(`${ORIGIN}/sitemap.xml`);
-  const sitemapUrls = xmlLocs(sitemap);
-  const directProducts = sitemapUrls.filter((url) => {
-    try { return new URL(url).pathname.startsWith("/products/"); } catch { return false; }
-  });
-  const productSitemaps = sitemapUrls.filter((url) =>
-    /sitemap.*product|product.*sitemap/i.test(url)
-  );
-  const candidates = productSitemaps.length ? productSitemaps : [`${ORIGIN}/sitemap_products_1.xml`];
-  const productUrls = [...directProducts];
-  for (const url of candidates) {
+  // Shopify may expose either a sitemap index or direct product URLs.
+  // Walk sitemap indexes recursively so we don't silently miss product pages.
+  const queue = [`${ORIGIN}/sitemap.xml`];
+  const seenSitemaps = new Set();
+  const productUrls = new Set();
+  while (queue.length) {
+    const sitemapUrl = queue.shift();
+    if (seenSitemaps.has(sitemapUrl)) continue;
+    seenSitemaps.add(sitemapUrl);
+    let xml;
     try {
-      const xml = await getText(url);
-      productUrls.push(...xmlLocs(xml).filter((u) => {
-        try { return new URL(u).pathname.startsWith("/products/"); } catch { return false; }
-      }));
-      await sleep(500);
+      xml = await getText(sitemapUrl);
     } catch (error) {
-      console.warn(`Sitemap not available: ${url} (${error.message})`);
+      console.warn(`Sitemap not available: ${sitemapUrl} (${error.message})`);
+      continue;
     }
+    for (const loc of xmlLocs(xml)) {
+      let parsed;
+      try { parsed = new URL(loc); } catch { continue; }
+      if (parsed.hostname !== new URL(ORIGIN).hostname) continue;
+      if (parsed.pathname.startsWith("/products/")) {
+        productUrls.add(parsed.origin + parsed.pathname);
+      } else if (/sitemap/i.test(parsed.pathname) && !seenSitemaps.has(loc)) {
+        queue.push(loc);
+      }
+    }
+    await sleep(300);
   }
-  return [...new Set(productUrls)];
+  return [...productUrls];
 }
 
 function decodeHtml(value = "") {
