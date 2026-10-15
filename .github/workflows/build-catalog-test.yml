@@ -1,6 +1,9 @@
 name: Build official product catalog (test)
 
 on:
+  # Refresh the list from the products currently published in the official sitemap.
+  schedule:
+    - cron: '23 18 * * *' # daily at 03:23 JST
   push:
     paths:
       - 'scripts/build-catalog.mjs'
@@ -8,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: "Number of product pages to test (validate 100 next)"
+        description: "Number of currently listed product pages to test"
         required: true
         default: "100"
         type: string
@@ -27,7 +30,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Fetch a small sample from the official site
+      - name: Fetch currently listed products from the official site
         run: node scripts/build-catalog.mjs --limit=${{ inputs.limit || '100' }}
       - name: Print catalog sample for verification
         run: |
@@ -35,7 +38,7 @@ jobs:
       - name: Save catalog as a downloadable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: francfranc-catalog-test
+          name: francfranc-current-catalog-test
           path: catalog.json
           if-no-files-found: warn
           retention-days: 7
