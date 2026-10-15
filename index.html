@@ -34,11 +34,14 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 <main>
 <h2>商品を写真から検索</h2>
 <p class="note">店頭の商品を撮影、または写真を選択してください。</p>
-<label class="upload" for="file">
+<div class="upload">
 <strong>📷 商品写真を選ぶ</strong>
-<span class="note">カメラ撮影・写真ライブラリに対応</span>
-</label>
-<input id="file" type="file" accept="image/*" hidden>
+<button type="button" id="cameraPick">カメラで撮影する</button>
+<button type="button" id="libraryPick" style="background:#fff;color:#333;border:1px solid #aaa">写真ライブラリから選ぶ</button>
+<span class="note">撮影する方法と、保存済み写真を選ぶ方法を分けました。</span>
+</div>
+<input id="file" type="file" accept="image/*" capture="environment" hidden>
+<input id="libraryFile" type="file" accept="image/*" hidden>
 <img id="photo" alt="撮影した商品写真">
 <button id="search" disabled>商品を検索する</button>
 <div class="status" id="photoStatus" role="status">写真検索のAIはまだ未接続です。現在は写真の選択・表示を確認できます。</div>
@@ -92,11 +95,17 @@ fetch('./catalog.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('ca
   renderCatalog();
 }).catch(()=>{catalogStatus.textContent='まだ公開カタログがありません。GitHub Actionsで「Refresh current Francfranc catalog」を実行すると、取得後にここへ表示されます。';});
 const file=document.getElementById('file');
+const libraryFile=document.getElementById('libraryFile');
+const cameraPick=document.getElementById('cameraPick');
+const libraryPick=document.getElementById('libraryPick');
 const photo=document.getElementById('photo');
 const search=document.getElementById('search');
 const photoStatus=document.getElementById('photoStatus');
-file.addEventListener('change',()=>{
-  const f=file.files[0];
+let selectedPhotoFile=null;
+cameraPick.addEventListener('click',()=>file.click());
+libraryPick.addEventListener('click',()=>libraryFile.click());
+function handlePhotoChange(input){
+  const f=input.files[0];
   if(!f)return;
   if(photo.dataset.url)URL.revokeObjectURL(photo.dataset.url);
   const url=URL.createObjectURL(f);
@@ -104,8 +113,11 @@ file.addEventListener('change',()=>{
   photo.src=url;
   photo.style.display='block';
   search.disabled=false;
+  selectedPhotoFile=f;
   photoStatus.textContent='写真を読み込みました。写真検索のAIはまだ未接続のため、商品名の特定はできません。';
-});
+}
+file.addEventListener('change',()=>handlePhotoChange(file));
+libraryFile.addEventListener('change',()=>handlePhotoChange(libraryFile));
 let imageSearchBusy=false;
 let imageExtractorPromise=null;
 async function getImageExtractor(){
@@ -145,7 +157,7 @@ async function fetchImageBlobUrl(url){
 }
 search.addEventListener('click',async()=>{
   if(imageSearchBusy)return;
-  const photoFile=file.files?.[0];
+  const photoFile=selectedPhotoFile;
   if(!photoFile){photoStatus.textContent='先に商品写真を選んでください。';return;}
   if(!catalogProducts.length){photoStatus.textContent='検索用カタログがまだありません。先にカタログ更新を実行してください。';return;}
   const candidates=catalogProducts.filter(p=>p.image&&p.title);
