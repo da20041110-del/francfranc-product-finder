@@ -151,6 +151,7 @@ file.addEventListener('change',()=>handlePhotoChange(file));
 libraryFile.addEventListener('change',()=>handlePhotoChange(libraryFile));
 let imageSearchBusy=false;
 let imageExtractorPromise=null;
+const productEmbeddingCache=new Map();
 async function getImageExtractor(){
   if(!imageExtractorPromise){
     imageExtractorPromise=(async()=>{
@@ -159,7 +160,7 @@ async function getImageExtractor(){
       env.allowLocalModels=false;
       env.useBrowserCache=true;
       return await pipeline('image-feature-extraction','Xenova/clip-vit-base-patch32');
-    })();
+    })().catch(error=>{imageExtractorPromise=null;throw error;});
   }
   return imageExtractorPromise;
 }
@@ -181,8 +182,15 @@ function cosine(a,b){
   for(let i=0;i<n;i++)score+=a[i]*b[i];
   return score;
 }
+function thumbnailUrl(url){
+  try{
+    const u=new URL(url);
+    u.pathname=u.pathname.replace(/_(?:2000x|1600x|1200x|800x|600x)(?=\\.)/i,'_400x');
+    return u.href;
+  }catch{return url;}
+}
 async function fetchImageBlobUrl(url){
-  const response=await fetch(url,{mode:'cors'});
+  const response=await fetch(thumbnailUrl(url),{mode:'cors'});
   if(!response.ok)throw new Error('商品画像を取得できませんでした');
   return URL.createObjectURL(await response.blob());
 }
@@ -201,20 +209,28 @@ search.addEventListener('click',async()=>{
     photoStatus.textContent='撮影写真を解析中…';
     const queryVector=await embedImage(extractor,photoUrl);
     const maxToCheck=Math.min(candidates.length,100);
+    let cachedCount=0;
     for(let i=0;i<maxToCheck;i++){
       const p=candidates[i];
-      let productUrl='';
       try{
-        productUrl=await fetchImageBlobUrl(p.image);
-        const vector=await embedImage(extractor,productUrl);
+        let vector=productEmbeddingCache.get(p.image);
+        if(vector){cachedCount++;}
+        else{
+          let productUrl='';
+          try{
+            productUrl=await fetchImageBlobUrl(p.image);
+            vector=await embedImage(extractor,productUrl);
+            productEmbeddingCache.set(p.image,vector);
+          }finally{
+            if(productUrl)URL.revokeObjectURL(productUrl);
+          }
+        }
         scored.push({product:p,score:cosine(queryVector,vector)});
       }catch(e){
         console.warn('商品画像を比較できませんでした:',p.url,e);
-      }finally{
-        if(productUrl)URL.revokeObjectURL(productUrl);
       }
       if((i+1)%5===0||i===maxToCheck-1){
-        photoStatus.textContent=`公式画像を比較中… ${i+1}/${maxToCheck}件`;
+        photoStatus.textContent=`公式画像を比較中… ${i+1}/${maxToCheck}件（再利用 ${cachedCount}件）`;
       }
     }
     scored.sort((a,b)=>b.score-a.score);
