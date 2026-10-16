@@ -218,6 +218,7 @@ search.addEventListener('click',async()=>{
       }
     }
     scored.sort((a,b)=>b.score-a.score);
+    catalogResults.style.display='block';
     catalogResults.innerHTML='';
     let top=scored.slice(0,5);
     let usedFallback=false;
@@ -261,6 +262,7 @@ search.addEventListener('click',async()=>{
   }catch(error){
     console.error(error);
     // Always show usable catalog candidates when AI comparison fails, so the user is not left with an empty result area.
+    catalogResults.style.display='block';
     catalogResults.innerHTML='';
     const fallback=candidates.slice(0,5);
     catalogStatus.textContent='写真の自動比較に失敗したため、参考商品を表示しています。以下は類似度順ではありません。';
