@@ -250,6 +250,7 @@ search.addEventListener('click',async()=>{
   });
   if(!candidates.length){photoStatus.textContent='選択したカテゴリーに、比較できる商品画像がありません。カテゴリーを増やして再検索してください。';return;}
   imageSearchBusy=true;search.disabled=true;
+  const searchStartedAt=performance.now();
   const photoUrl=URL.createObjectURL(photoFile);
   const scored=[];
   try{
@@ -325,7 +326,8 @@ search.addEventListener('click',async()=>{
       card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
       catalogResults.appendChild(card);
     }
-    photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件です。上位候補から商品を確認してください。`;
+    const elapsedSeconds=((performance.now()-searchStartedAt)/1000).toFixed(1);
+    photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒、解析結果の再利用は${cachedCount}件です。上位候補から商品を確認してください。`;
     catalogResults.style.display='block';
     catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){
