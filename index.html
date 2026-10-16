@@ -101,7 +101,7 @@ function renderProgressCandidates(scored){
   if(!top.length)return;
   const note=document.createElement('p');
   note.className='note';
-  note.textContent='途中経過：現時点で似ている候補です。比較が進むと順位が変わることがあります。';
+  note.textContent='途中経過：現時点で似ている候補です。比較が進むと順位が変わることがあります。良さそうな商品は検索完了前でも選べます。';
   catalogResults.appendChild(note);
   for(const item of top){
     const p=item.product;
@@ -110,7 +110,17 @@ function renderProgressCandidates(scored){
     img.addEventListener('error',()=>img.style.display='none');
     const title=document.createElement('strong');title.textContent=p.title||'商品名未取得';
     const detail=document.createElement('p');detail.textContent='品番：'+(p.itemCode||'未取得')+' / 類似度（参考）：'+(item.score*100).toFixed(1);
-    card.append(img,title,detail);catalogResults.appendChild(card);
+    const choose=document.createElement('button');choose.type='button';choose.className='chooseProduct';choose.textContent='この商品を選ぶ（検索を中断）';
+    choose.addEventListener('click',()=>{
+      if(photo.dataset.url)URL.revokeObjectURL(photo.dataset.url);
+      selectedPhotoFile=null;
+      file.value='';libraryFile.value='';
+      search.disabled=true;
+      imageSearchBusy=false;
+      selectProduct(p,card);
+      photoStatus.textContent='途中候補を選択しました。残りの画像比較は中断しました。必要なら写真を選び直して再検索できます。';
+    });
+    card.append(img,title,detail,choose);catalogResults.appendChild(card);
   }
 }
 let catalogProducts=[];
