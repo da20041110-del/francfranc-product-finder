@@ -233,7 +233,14 @@ search.addEventListener('click',async()=>{
       const p=item.product;
       const card=document.createElement('article');card.className='card';card.style.marginTop='12px';
       const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
-      card.innerHTML='<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4"><h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(p.itemCode||'未取得')+'</p><p>画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
+      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(p.itemCode||'未取得')+'</p><p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
+      const productImage=document.createElement('img');
+      productImage.src=p.image;
+      productImage.alt=p.title||'商品画像';
+      productImage.loading='eager';
+      productImage.style.cssText='display:block;width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4';
+      productImage.addEventListener('error',()=>{productImage.alt='商品画像を読み込めません。公式商品ページで確認してください。';productImage.style.display='none';});
+      card.prepend(productImage);
       card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
       catalogResults.appendChild(card);
     }
