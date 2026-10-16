@@ -239,7 +239,20 @@ search.addEventListener('click',async()=>{
       productImage.alt=p.title||'商品画像';
       productImage.loading='eager';
       productImage.style.cssText='display:block;width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4';
-      productImage.addEventListener('error',()=>{productImage.alt='商品画像を読み込めません。公式商品ページで確認してください。';productImage.style.display='none';});
+      productImage.addEventListener('error',()=>{
+        productImage.style.display='none';
+        const imageNotice=document.createElement('div');
+        imageNotice.textContent='商品画像を読み込めませんでした。公式商品ページで画像を確認してください。';
+        imageNotice.style.cssText='padding:18px;background:#f0ede9;border-radius:8px;font-size:13px;line-height:1.6;margin-bottom:12px';
+        const imageLink=document.createElement('a');
+        imageLink.href=p.url||'#';
+        imageLink.target='_blank';
+        imageLink.rel='noopener noreferrer';
+        imageLink.textContent='公式商品ページで画像を見る';
+        imageLink.style.cssText='display:block;margin-top:8px';
+        imageNotice.appendChild(imageLink);
+        if(!card.querySelector('.imageLoadNotice')){imageNotice.className='imageLoadNotice';card.prepend(imageNotice);}
+      });
       card.prepend(productImage);
       card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
       catalogResults.appendChild(card);
