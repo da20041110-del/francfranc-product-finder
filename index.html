@@ -185,7 +185,7 @@ function cosine(a,b){
 function thumbnailUrl(url){
   try{
     const u=new URL(url);
-    u.pathname=u.pathname.replace(/_(?:2000x|1600x|1200x|800x|600x)(?=\\.)/i,'_400x');
+    u.pathname=u.pathname.replace(/_(?:2000x|1600x|1200x|800x|600x)(?=\.)/i,'_400x');
     return u.href;
   }catch{return url;}
 }
