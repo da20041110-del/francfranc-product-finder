@@ -260,7 +260,27 @@ search.addEventListener('click',async()=>{
     photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件です。上位候補から商品を確認してください。`;
   }catch(error){
     console.error(error);
-    photoStatus.textContent='画像検索を完了できませんでした。'+(error?.message||'画像モデルまたは公式画像にアクセスできない可能性があります。');
+    // Always show usable catalog candidates when AI comparison fails, so the user is not left with an empty result area.
+    catalogResults.innerHTML='';
+    const fallback=candidates.slice(0,5);
+    catalogStatus.textContent='写真の自動比較に失敗したため、参考商品を表示しています。以下は類似度順ではありません。';
+    for(const p of fallback){
+      const card=document.createElement('article');
+      card.className='card';
+      card.style.marginTop='12px';
+      const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
+      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(p.itemCode||'未取得')+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
+      if(p.image){
+        const img=document.createElement('img');
+        img.src=p.image;img.alt=p.title||'商品画像';img.loading='eager';
+        img.style.cssText='display:block;width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4';
+        img.addEventListener('error',()=>{img.style.display='none';});
+        card.prepend(img);
+      }
+      card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
+      catalogResults.appendChild(card);
+    }
+    photoStatus.textContent='写真の自動比較でエラーが発生しました。参考候補を表示しています。エラー：'+(error?.message||'画像モデルまたは公式画像にアクセスできませんでした。');
   }finally{
     URL.revokeObjectURL(photoUrl);
     imageSearchBusy=false;search.disabled=false;
