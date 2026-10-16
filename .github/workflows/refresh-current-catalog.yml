@@ -30,7 +30,7 @@ jobs:
           node-version: "22"
       - name: Fetch a small test catalog after code changes
         if: github.event_name == 'push'
-        run: node scripts/build-catalog.mjs --limit=100
+        run: node scripts/build-catalog.mjs --limit=500
       - name: Fetch all products for scheduled or manual refresh
         if: github.event_name != 'push'
         run: node scripts/build-catalog.mjs --all
