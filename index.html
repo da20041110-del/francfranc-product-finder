@@ -115,8 +115,7 @@ function renderProgressCandidates(scored){
       if(photo.dataset.url)URL.revokeObjectURL(photo.dataset.url);
       selectedPhotoFile=null;
       file.value='';libraryFile.value='';
-      search.disabled=true;
-      imageSearchBusy=false;
+      stopImageSearch=true;
       selectProduct(p,card);
       photoStatus.textContent='途中候補を選択しました。残りの画像比較は中断しました。必要なら写真を選び直して再検索できます。';
     });
@@ -202,6 +201,7 @@ function handlePhotoChange(input){
 file.addEventListener('change',()=>handlePhotoChange(file));
 libraryFile.addEventListener('change',()=>handlePhotoChange(libraryFile));
 let imageSearchBusy=false;
+let stopImageSearch=false;
 let imageExtractorPromise=null;
 const productEmbeddingCache=new Map();
 async function getImageExtractor(){
@@ -259,7 +259,7 @@ search.addEventListener('click',async()=>{
     return code.length>=4&&selectedCategories.includes(code.slice(2,4));
   });
   if(!candidates.length){photoStatus.textContent='選択したカテゴリーに、比較できる商品画像がありません。カテゴリーを増やして再検索してください。';return;}
-  imageSearchBusy=true;search.disabled=true;
+  imageSearchBusy=true;stopImageSearch=false;search.disabled=true;
   const searchStartedAt=performance.now();
   const photoUrl=URL.createObjectURL(photoFile);
   const scored=[];
@@ -270,6 +270,7 @@ search.addEventListener('click',async()=>{
     const maxToCheck=Math.min(candidates.length,500);
     let cachedCount=0;
     for(let i=0;i<maxToCheck;i++){
+      if(stopImageSearch)return;
       const p=candidates[i];
       try{
         let vector=productEmbeddingCache.get(p.image);
@@ -295,6 +296,7 @@ search.addEventListener('click',async()=>{
         renderProgressCandidates(scored);
       }
     }
+    if(stopImageSearch)return;
     scored.sort((a,b)=>b.score-a.score);
     catalogResults.style.display='block';
     catalogResults.innerHTML='';
