@@ -46,5 +46,8 @@ jobs:
             echo "Catalog unchanged; no commit needed."
           else
             git commit -m "Refresh current official product catalog"
-            git push
+            # Other app/workflow changes may land while scraping takes place.
+            # Rebase the generated catalog commit before pushing to avoid a race.
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi
