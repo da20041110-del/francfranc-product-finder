@@ -89,7 +89,7 @@ function renderCatalog(){
     const card=document.createElement('article');
     card.className='card';
     card.style.marginTop='12px';
-    const image=p.image?'<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4">':'';
+    const image=p.image?'<img src="'+escapeHtml(p.image)+'" alt="" loading="eager" onerror="this.style.display='none'" style="width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4">':'';
     const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
     const code=p.itemCode?escapeHtml(p.itemCode):'品番未取得';
     card.innerHTML=image+'<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+code+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
@@ -219,9 +219,16 @@ search.addEventListener('click',async()=>{
     }
     scored.sort((a,b)=>b.score-a.score);
     catalogResults.innerHTML='';
-    const top=scored.slice(0,5);
-    if(!top.length)throw new Error('公式商品画像を取得できませんでした。サイト側の画像アクセス制限（CORS）の可能性があります。');
-    catalogStatus.textContent='写真検索の候補（類似度順）。必ず商品を確認してください。';
+    let top=scored.slice(0,5);
+    let usedFallback=false;
+    if(!top.length){
+      // If the official image host blocks browser-side comparison, still show usable product cards instead of a blank result.
+      top=candidates.slice(0,5).map(product=>({product,score:null}));
+      usedFallback=true;
+    }
+    catalogStatus.textContent=usedFallback
+      ? '画像の自動比較ができなかったため、掲載商品の参考候補を表示しています。類似度順ではありません。'
+      : '写真検索の候補（類似度順）。必ず商品を確認してください。';
     for(const item of top){
       const p=item.product;
       const card=document.createElement('article');card.className='card';card.style.marginTop='12px';
