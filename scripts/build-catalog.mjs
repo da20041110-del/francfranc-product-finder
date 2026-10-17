@@ -127,17 +127,34 @@ if (!urls.length) {
 } else {
   const selected = urls.slice(0, limit);
   const products = [];
-  for (const url of selected) {
-    try {
-      const html = await getText(url);
-      const product = parseProduct(url, html);
-      if (product.title || product.itemCode) products.push(product);
-      console.log(`${products.length}/${selected.length} checked: ${product.title || url}`);
-    } catch (error) {
-      console.warn(`Product not fetched: ${url} (${error.message})`);
+  // A small fixed worker pool keeps the full catalog refresh practical without
+  // sending a burst of requests to the official site.
+  const concurrency = 3;
+  let completed = 0;
+  let nextIndex = 0;
+  async function worker() {
+    while (nextIndex < selected.length) {
+      const index = nextIndex++;
+      const url = selected[index];
+      try {
+        const html = await getText(url);
+        const product = parseProduct(url, html);
+        if (product.title || product.itemCode) products.push(product);
+        completed++;
+        console.log(`${completed}/${selected.length} checked: ${product.title || url}`);
+      } catch (error) {
+        completed++;
+        console.warn(`${completed}/${selected.length} failed: ${url} (${error.message})`);
+      }
+      // Per-worker delay limits request frequency while allowing a large catalog
+      // to finish within the workflow time budget.
+      await sleep(1200);
     }
-    await sleep(1200);
   }
+  await Promise.all(Array.from(
+    { length: Math.min(concurrency, selected.length) },
+    () => worker()
+  ));
   const output = {
     generatedAt: new Date().toISOString(),
     source: ORIGIN,
