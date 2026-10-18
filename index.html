@@ -348,7 +348,9 @@ search.addEventListener('click',async()=>{
     }catch(cropError){
       console.warn('中央切り抜き検索を利用できませんでした。元の写真で続行します。',cropError);
     }
-    const maxToCheck=Math.min(candidates.length,500);
+    // Compare every eligible catalog item so products later in the catalog
+    // cannot be silently skipped by a fixed 500-item limit.
+    const maxToCheck=candidates.length;
     let cachedCount=0;
     let completedCount=0;
     let nextCandidateIndex=0;
@@ -402,7 +404,7 @@ search.addEventListener('click',async()=>{
     scored.sort((a,b)=>b.score-a.score);
     catalogResults.style.display='block';
     catalogResults.innerHTML='';
-    let top=scored.slice(0,5);
+    let top=scored.slice(0,10);
     let usedFallback=false;
     if(!top.length){
       // If the official image host blocks browser-side comparison, still show usable product cards instead of a blank result.
@@ -449,7 +451,7 @@ search.addEventListener('click',async()=>{
     // Always show usable catalog candidates when AI comparison fails, so the user is not left with an empty result area.
     catalogResults.style.display='block';
     catalogResults.innerHTML='';
-    const fallback=candidates.slice(0,5);
+    const fallback=candidates.slice(0,10);
     catalogStatus.textContent='写真の自動比較に失敗したため、参考商品を表示しています。以下は類似度順ではありません。';
     for(const p of fallback){
       const card=document.createElement('article');
