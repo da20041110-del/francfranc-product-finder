@@ -19,7 +19,7 @@ h2{font-size:18px}
 #catalogResults:empty{display:none}
 #catalogResults:not(:empty){display:block}
 #catalogResults{max-height:55vh;overflow-y:auto;overscroll-behavior:contain;padding-bottom:4px;scrollbar-gutter:stable}
-#catalogQuery{scroll-margin-top:18px;position:sticky;top:8px;z-index:5;background:#fff;box-shadow:0 0 0 5px #fff}
+#catalogQuery{scroll-margin-top:18px;position:relative;z-index:5;background:#fff;box-shadow:0 0 0 5px #fff;scroll-behavior:auto}
 @media(max-width:600px){input[type=text]{font-size:16px}#catalogResults{max-height:50vh}}
 button{width:100%;border:0;border-radius:10px;padding:15px;margin-top:14px;background:#333;color:white;font-size:16px;cursor:pointer}
 button:disabled{opacity:.5}
@@ -197,7 +197,23 @@ function selectProduct(p,card){
   photoStatus.textContent='商品を選択しました。商品名・価格・品番・バーコードを確認してください。';
   barcodeCard.scrollIntoView({behavior:'smooth',block:'start'});
 }
-catalogQuery.addEventListener('input',renderCatalog);
+let catalogRenderTimer=null;
+catalogQuery.addEventListener('input',()=>{
+  // Keep the focused search field stable on iOS while the results below it change.
+  const focused=document.activeElement===catalogQuery;
+  const scrollTop=window.scrollY;
+  if(catalogRenderTimer)clearTimeout(catalogRenderTimer);
+  catalogRenderTimer=setTimeout(()=>{
+    renderCatalog();
+    if(focused){
+      requestAnimationFrame(()=>{
+        if(document.activeElement===catalogQuery){
+          window.scrollTo({top:scrollTop,behavior:'auto'});
+        }
+      });
+    }
+  },100);
+});
 fetch('./catalog.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('catalog.json not found');return r.json();}).then(data=>{
   catalogProducts=Array.isArray(data.products)?data.products:[];
   catalogStatus.textContent=`カタログ取得日時：${data.generatedAt||'不明'} / 取得URL ${data.attempted??'?'}件、商品データ ${catalogProducts.length}件`;
