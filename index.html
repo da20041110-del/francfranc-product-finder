@@ -269,33 +269,44 @@ search.addEventListener('click',async()=>{
     const queryVector=await embedImage(extractor,photoUrl);
     const maxToCheck=Math.min(candidates.length,500);
     let cachedCount=0;
-    for(let i=0;i<maxToCheck;i++){
-      if(stopImageSearch)return;
-      const p=candidates[i];
-      try{
-        let vector=productEmbeddingCache.get(p.image);
-        if(vector){cachedCount++;}
-        else{
-          let productUrl='';
-          try{
-            productUrl=await fetchImageBlobUrl(p.image);
-            vector=await embedImage(extractor,productUrl);
-            productEmbeddingCache.set(p.image,vector);
-          }finally{
-            if(productUrl)URL.revokeObjectURL(productUrl);
+    let completedCount=0;
+    let nextCandidateIndex=0;
+    // Two workers overlap network image downloads with model inference while
+    // keeping phone memory and CPU pressure modest.
+    const workerCount=Math.min(2,maxToCheck);
+    async function compareWorker(){
+      while(!stopImageSearch){
+        const i=nextCandidateIndex++;
+        if(i>=maxToCheck)return;
+        const p=candidates[i];
+        try{
+          let vector=productEmbeddingCache.get(p.image);
+          if(vector){cachedCount++;}
+          else{
+            let productUrl='';
+            try{
+              productUrl=await fetchImageBlobUrl(p.image);
+              if(stopImageSearch)return;
+              vector=await embedImage(extractor,productUrl);
+              if(stopImageSearch)return;
+              productEmbeddingCache.set(p.image,vector);
+            }finally{
+              if(productUrl)URL.revokeObjectURL(productUrl);
+            }
+          }
+          if(!stopImageSearch)scored.push({product:p,score:cosine(queryVector,vector)});
+        }catch(e){
+          if(!stopImageSearch)console.warn('商品画像を比較できませんでした:',p.url,e);
+        }finally{
+          completedCount++;
+          if(!stopImageSearch){
+            photoStatus.textContent=`公式画像を比較中… ${completedCount}/${maxToCheck}件（再利用 ${cachedCount}件）`;
+            if(completedCount%25===0&&scored.length)renderProgressCandidates(scored);
           }
         }
-        scored.push({product:p,score:cosine(queryVector,vector)});
-      }catch(e){
-        console.warn('商品画像を比較できませんでした:',p.url,e);
-      }
-      if((i+1)%5===0||i===maxToCheck-1){
-        photoStatus.textContent=`公式画像を比較中… ${i+1}/${maxToCheck}件（再利用 ${cachedCount}件）`;
-      }
-      if((i+1)%25===0&&scored.length){
-        renderProgressCandidates(scored);
       }
     }
+    await Promise.all(Array.from({length:workerCount},()=>compareWorker()));
     if(stopImageSearch)return;
     scored.sort((a,b)=>b.score-a.score);
     catalogResults.style.display='block';
