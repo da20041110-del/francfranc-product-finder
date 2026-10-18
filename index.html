@@ -378,7 +378,13 @@ search.addEventListener('click',async()=>{
           if(!stopImageSearch){
             const originalScore=cosine(queryVector,vector);
             const cropScore=cropQueryVector?cosine(cropQueryVector,vector):originalScore;
-            scored.push({product:p,score:Math.max(originalScore,cropScore)});
+            // Blend the best view with the original-photo score. Pure max scoring
+            // can over-promote accidental crop matches; this keeps context in the ranking.
+            const bestScore=Math.max(originalScore,cropScore);
+            const blendedScore=cropQueryVector
+              ? bestScore*0.75+((originalScore+cropScore)/2)*0.25
+              : originalScore;
+            scored.push({product:p,score:blendedScore});
           }
         }catch(e){
           if(!stopImageSearch)console.warn('商品画像を比較できませんでした:',p.url,e);
