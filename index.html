@@ -353,6 +353,7 @@ search.addEventListener('click',async()=>{
     const maxToCheck=candidates.length;
     let cachedCount=0;
     let completedCount=0;
+    let failedImageCount=0;
     let nextCandidateIndex=0;
     // Two workers overlap network image downloads with model inference while
     // keeping phone memory and CPU pressure modest.
@@ -389,11 +390,12 @@ search.addEventListener('click',async()=>{
             scored.push({product:p,score:blendedScore});
           }
         }catch(e){
+          failedImageCount++;
           if(!stopImageSearch)console.warn('商品画像を比較できませんでした:',p.url,e);
         }finally{
           completedCount++;
           if(!stopImageSearch){
-            photoStatus.textContent=`公式画像を比較中… ${completedCount}/${maxToCheck}件（再利用 ${cachedCount}件）`;
+            photoStatus.textContent=`公式画像を比較中… ${completedCount}/${maxToCheck}件（再利用 ${cachedCount}件・画像取得失敗 ${failedImageCount}件）`;
             if(completedCount%25===0&&scored.length)renderProgressCandidates(scored);
           }
         }
@@ -414,6 +416,10 @@ search.addEventListener('click',async()=>{
     catalogStatus.textContent=usedFallback
       ? '画像の自動比較ができなかったため、掲載商品の参考候補を表示しています。類似度順ではありません。'
       : '写真検索の候補（類似度順）。必ず商品を確認してください。';
+    const searchDiagnostics=document.createElement('p');
+    searchDiagnostics.className='note';
+    searchDiagnostics.textContent='比較対象 '+maxToCheck+'件／比較成功 '+scored.length+'件／画像取得・比較失敗 '+failedImageCount+'件／再利用 '+cachedCount+'件';
+    catalogResults.appendChild(searchDiagnostics);
     for(const item of top){
       const p=item.product;
       const card=document.createElement('article');card.className='card';card.style.marginTop='12px';
