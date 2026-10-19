@@ -1,6 +1,11 @@
 name: Refresh current Francfranc catalog
 
 on:
+  # Any scraper/workflow change refreshes the full catalog, never a partial test catalog.
+  push:
+    paths:
+      - 'scripts/build-catalog.mjs'
+      - '.github/workflows/refresh-current-catalog.yml'
   schedule:
     - cron: '23 18 * * *' # 03:23 JST daily
   workflow_dispatch:
