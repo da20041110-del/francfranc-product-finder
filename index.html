@@ -241,19 +241,7 @@ function handlePhotoChange(input){
   photo.style.display='block';
   search.disabled=false;
   selectedPhotoFile=f;
-  photoStatus.textContent='写真を読み込みました。検索モデルを準備しています…';
-  // Warm the AI model while the user chooses a category, reducing the delay
-  // after they tap Search on a cold page.
-  getImageExtractor().then(()=>{
-    if(selectedPhotoFile===f&&!imageSearchBusy){
-      photoStatus.textContent='写真を読み込みました。カテゴリーを確認して「商品を検索する」を押してください。';
-    }
-  }).catch(error=>{
-    console.warn('検索モデルの事前準備に失敗しました。検索時に再試行します。',error);
-    if(selectedPhotoFile===f&&!imageSearchBusy){
-      photoStatus.textContent='写真を読み込みました。「商品を検索する」を押すと検索モデルを準備します。';
-    }
-  });
+  photoStatus.textContent='写真を読み込みました。「商品を検索する」を押すと、公式掲載商品の画像と比較します。';
 }
 file.addEventListener('change',()=>handlePhotoChange(file));
 libraryFile.addEventListener('change',()=>handlePhotoChange(libraryFile));
