@@ -98,7 +98,10 @@ function extractItemCode(html, product) {
   const match = text.match(/品番\s*[:：|]?\s*(\d{13})/);
   if (match) return match[1];
   const sku = String(product?.sku || "");
-  return /^\d{13}$/.test(sku) ? sku : "";
+  if (/^\d{13}$/.test(sku)) return sku;
+  // Fallback for official product pages whose structured data omits the code.
+  const slugCode = String(url).match(/\/products\/(\d{13})(?:[/?#]|$)/)?.[1] || "";
+  return /^\d{13}$/.test(slugCode) ? slugCode : "";
 }
 
 function parseProduct(url, html) {
