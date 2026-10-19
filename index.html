@@ -336,6 +336,7 @@ search.addEventListener('click',async()=>{
     return code.length>=4&&selectedCategories.includes(code.slice(2,4));
   });
   if(!candidates.length){photoStatus.textContent='選択したカテゴリーに、比較できる商品画像がありません。カテゴリーを増やして再検索してください。';return;}
+  const precomputedCandidateCount=candidates.filter(p=>productImageFeatures.has(p.image)).length;
   imageSearchBusy=true;stopImageSearch=false;search.disabled=true;
   const searchStartedAt=performance.now();
   const photoUrl=URL.createObjectURL(photoFile);
@@ -398,7 +399,7 @@ search.addEventListener('click',async()=>{
         }finally{
           completedCount++;
           if(!stopImageSearch){
-            photoStatus.textContent=`公式画像を比較中… ${completedCount}/${maxToCheck}件（事前解析済み ${featuresLoaded}件・再利用 ${cachedCount}件・画像取得失敗 ${failedImageCount}件）`;
+            photoStatus.textContent=`公式画像を比較中… ${completedCount}/${maxToCheck}件（対象 ${candidates.length}件・事前解析済み対象 ${precomputedCandidateCount}件・再利用 ${cachedCount}件・失敗 ${failedImageCount}件）`;
             if(completedCount%25===0&&scored.length)renderProgressCandidates(scored);
           }
         }
@@ -452,7 +453,7 @@ search.addEventListener('click',async()=>{
       catalogResults.appendChild(card);
     }
     const elapsedSeconds=((performance.now()-searchStartedAt)/1000).toFixed(1);
-    photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒、事前解析済み画像は${featuresLoaded}件、解析結果の再利用は${cachedCount}件です。上位候補から商品を確認してください。`;
+    photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒、選択カテゴリーの対象は${candidates.length}件、うち事前解析済みは${precomputedCandidateCount}件、全体の事前解析済み画像は${featuresLoaded}件です。上位候補から商品を確認してください。`;
     catalogResults.style.display='block';
     catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){
