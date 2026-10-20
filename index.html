@@ -85,6 +85,7 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 <label for="jan">品番（13桁）</label>
 <input id="jan" type="text" inputmode="numeric" autocomplete="off" maxlength="13" placeholder="例：4901234567894">
 <div class="status" id="barcodeStatus" role="status">品番を入力すると、チェックデジットを確認してバーコードを表示します。</div>
+<p><a id="officialProductLink" href="#" target="_blank" rel="noopener noreferrer" hidden>公式商品ページを開く（色違いを確認）</a></p>
 <svg class="barcode" id="barcode" viewBox="0 0 320 110" role="img" aria-label="バーコードは未生成です"></svg>
 </section>
 </main>
@@ -211,6 +212,11 @@ function selectProduct(p,card){
   const code=getProductCode(p);
   const barcodeCard=document.getElementById('barcodeCard');
   barcodeCard.style.display='block';
+  const officialLink=document.getElementById('officialProductLink');
+  if(officialLink){
+    officialLink.href=p.url||'#';
+    officialLink.hidden=!p.url;
+  }
   if(/^\d{13}$/.test(code)){
     jan.value=code;
     jan.dispatchEvent(new Event('input'));
