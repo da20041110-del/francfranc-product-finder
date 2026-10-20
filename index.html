@@ -136,6 +136,28 @@ let catalogProducts=[];
 let productImageFeatures=new Map();
 let imageFeaturesReady=fetch('./image-features.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('features not ready');return r.json();}).then(data=>{const entries=Object.entries(data.features||{});for(const [url,encoded] of entries){if(typeof encoded!=='string')continue;const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));productImageFeatures.set(url,Array.from(new Int8Array(bytes.buffer),v=>v/127));}return productImageFeatures.size;}).catch(()=>0);
 function escapeHtml(value=''){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function getSeriesKey(title=''){
+  let s=normalizeJapaneseSearch(title);
+  s=s.replace(/(ライトピンク|ダークグレー|ライトグレー|アイボリー|ベージュ|ブラック|ホワイト|ピンク|ブルー|グレー|グリーン|イエロー|レッド|オレンジ|パープル|ブラウン|ネイビー|クリア|透明|白|黒|赤|青|緑|黄|茶|桃色)/g,'');
+  s=s.replace(/(サイズ|size)?(xxs|xxl|xs|xl|ss|s|m|l)(サイズ)?/g,'');
+  s=s.replace(/(ミニ|スモール|レギュラー|ラージ|small|medium|large)/g,'');
+  return s;
+}
+function renderRelatedVariants(product){
+  const key=getSeriesKey(product.title||'');
+  if(key.length<4)return '';
+  const related=catalogProducts.filter(p=>p.url!==product.url&&p.image&&getSeriesKey(p.title||'')===key).slice(0,5);
+  if(!related.length)return '';
+  const cards=related.map(p=>{
+    const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
+    return '<div style="min-width:112px;max-width:132px;flex:1;border:1px solid #e5e1dd;border-radius:8px;padding:8px;background:#fff">'+
+      (p.image?'<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;height:92px;object-fit:contain">':'')+
+      '<div style="font-size:12px;line-height:1.4;font-weight:600;margin:5px 0">'+escapeHtml(p.title||'商品名未取得')+'</div>'+
+      '<div style="font-size:12px">価格：'+escapeHtml(price)+'</div>'+
+      '<a style="font-size:12px;display:inline-block;margin-top:5px" href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式ページ</a></div>';
+  }).join('');
+  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・サイズ違い</strong><p style="font-size:12px;margin:5px 0 8px">商品名が近い掲載商品です。色やサイズは公式ページで確認してください。</p><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div></section>';
+}
 function normalizeJapaneseSearch(value=''){
   let text=String(value).normalize('NFKC').toLocaleLowerCase('ja').replace(/[\\s　・･‐‑‒–—―ー_/.,、。()（）［］【】「」『』]/g,'');
   // Normalize katakana to hiragana so either script can find the same product name.
@@ -438,7 +460,7 @@ search.addEventListener('click',async()=>{
       const p=item.product;
       const card=document.createElement('article');card.className='card';card.style.marginTop='12px';
       const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
-      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
+      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>'+renderRelatedVariants(p);
       const productImage=document.createElement('img');
       productImage.src=p.image;
       productImage.alt=p.title||'商品画像';
