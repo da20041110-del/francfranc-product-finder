@@ -177,7 +177,15 @@ function renderCatalog(){
     return;
   }
   catalogResults.style.display='block';
-  const found=catalogProducts.map(p=>{
+  const selectedCategories=categoryChoices.filter(el=>el.checked).map(el=>el.value);
+  const found=catalogProducts.filter(p=>{
+    if(selectedCategories.length){
+      const code=getProductCode(p);
+      const category=code.length>=4?code.slice(2,4):'';
+      if(!selectedCategories.includes(category))return false;
+    }
+    return true;
+  }).map(p=>{
     const title=normalizeJapaneseSearch(p.title||'');
     const code=String(p.itemCode||'').replace(/\\D/g,'');
     let score=0;
