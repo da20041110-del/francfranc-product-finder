@@ -135,7 +135,7 @@ function renderProgressCandidates(scored){
 }
 let catalogProducts=[];
 let productImageFeatures=new Map();
-let imageFeaturesReady=fetch('./image-features.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('features not ready');return r.json();}).then(data=>{const entries=Object.entries(data.features||{});for(const [url,encoded] of entries){if(typeof encoded!=='string')continue;const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));productImageFeatures.set(url,Array.from(new Int8Array(bytes.buffer),v=>v/127));}return productImageFeatures.size;}).catch(()=>0);
+let imageFeaturesReady=fetch('./image-features.json',{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error('features not ready');return r.json();}).then(data=>{const entries=Object.entries(data.features||{});for(const [url,encoded] of entries){if(typeof encoded!=='string')continue;const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));productImageFeatures.set(url,Array.from(new Int8Array(bytes.buffer),v=>v/127));}return productImageFeatures.size;}).catch(()=>0);
 function escapeHtml(value=''){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function getSeriesKey(title=''){
   let s=normalizeJapaneseSearch(title);
@@ -252,7 +252,7 @@ catalogQuery.addEventListener('input',()=>{
     }
   },100);
 });
-fetch('./catalog.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('catalog.json not found');return r.json();}).then(data=>{
+fetch('./catalog.json',{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error('catalog.json not found');return r.json();}).then(data=>{
   catalogProducts=Array.isArray(data.products)?data.products:[];
   const withImage=catalogProducts.filter(p=>p.image).length;
   const withCode=catalogProducts.filter(p=>/^\d{13}$/.test(getProductCode(p))).length;
