@@ -176,9 +176,12 @@ function normalizeJapaneseSearch(value=''){
   // Normalize katakana to hiragana so either script can find the same product name.
   return text.replace(/[ァ-ヶ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0x60));
 }
+let catalogVisibleCount=30;
+let lastCatalogQuery='';
 function renderCatalog(){
   const raw=(catalogQuery.value||'').trim();
   const q=normalizeJapaneseSearch(raw);
+  if(q!==lastCatalogQuery){catalogVisibleCount=30;lastCatalogQuery=q;}
   catalogResults.innerHTML='';
   if(!q){
     catalogResults.style.display='none';
@@ -187,7 +190,7 @@ function renderCatalog(){
   }
   catalogResults.style.display='block';
   const selectedCategories=categoryChoices.filter(el=>el.checked).map(el=>el.value);
-  const found=catalogProducts.filter(p=>{
+  const matching=catalogProducts.filter(p=>{
     if(selectedCategories.length){
       const code=getProductCode(p);
       const category=code.length>=4?code.slice(2,4):'';
@@ -212,9 +215,10 @@ function renderCatalog(){
       }
     }
     return {p,score};
-  }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,30).map(x=>x.p);
-  if(!found.length){catalogStatus.textContent='一致する掲載商品が見つかりません。';return;}
-  catalogStatus.textContent=`候補 ${found.length}件を表示中（検索結果は最大30件）`;
+  }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+  if(!matching.length){catalogStatus.textContent='一致する掲載商品が見つかりません。';return;}
+  const found=matching.slice(0,catalogVisibleCount).map(x=>x.p);
+  catalogStatus.textContent=`検索結果 ${matching.length}件中 ${found.length}件を表示中`;
   for(const p of found){
     const card=document.createElement('article');
     card.className='card';
@@ -226,6 +230,16 @@ function renderCatalog(){
     card.innerHTML=image+'<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+code+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
     card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
     catalogResults.appendChild(card);
+  }
+  if(matching.length>found.length){
+    const moreButton=document.createElement('button');
+    moreButton.type='button';
+    moreButton.textContent=`さらに表示（残り ${matching.length-found.length}件）`;
+    moreButton.addEventListener('click',()=>{
+      catalogVisibleCount+=30;
+      renderCatalog();
+    });
+    catalogResults.appendChild(moreButton);
   }
 }
 function selectProduct(p,card){
