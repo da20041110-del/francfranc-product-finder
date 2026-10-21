@@ -345,9 +345,9 @@ async function embedImage(extractor,source){
   const result=await extractor(source);
   return vectorFromTensor(result);
 }
-// Create a centered square crop as an additional query view. The original photo
-// remains in the comparison, so cropping cannot remove a useful original match.
-async function createCenterCropDataUrl(file){
+// Build several overlapping square views. The full image is still scored,
+// while crops can focus on an item away from the photo center.
+async function createCropDataUrls(file){
   let bitmap;
   try{
     if(typeof createImageBitmap==='function'){
@@ -363,15 +363,22 @@ async function createCenterCropDataUrl(file){
     }
     const width=bitmap.width||bitmap.naturalWidth;
     const height=bitmap.height||bitmap.naturalHeight;
-    const side=Math.max(1,Math.round(Math.min(width,height)*0.82));
-    const sx=Math.max(0,Math.round((width-side)/2));
-    const sy=Math.max(0,Math.round((height-side)/2));
-    const canvas=document.createElement('canvas');
-    canvas.width=canvas.height=side;
-    const context=canvas.getContext('2d');
-    if(!context)throw new Error('写真の切り抜きに対応していません');
-    context.drawImage(bitmap,sx,sy,side,side,0,0,side,side);
-    return canvas.toDataURL('image/jpeg',0.9);
+    const side=Math.max(1,Math.round(Math.min(width,height)*0.62));
+    const maxX=Math.max(0,width-side), maxY=Math.max(0,height-side);
+    const positions=[
+      [Math.round(maxX/2),Math.round(maxY/2)],
+      [0,0],[maxX,0],[0,maxY],[maxX,maxY]
+    ];
+    const results=[];
+    for(const [sx,sy] of positions){
+      const canvas=document.createElement('canvas');
+      canvas.width=canvas.height=side;
+      const context=canvas.getContext('2d');
+      if(!context)continue;
+      context.drawImage(bitmap,sx,sy,side,side,0,0,side,side);
+      results.push(canvas.toDataURL('image/jpeg',0.88));
+    }
+    return results;
   }finally{
     if(bitmap&&typeof bitmap.close==='function')bitmap.close();
   }
@@ -417,12 +424,15 @@ search.addEventListener('click',async()=>{
     const extractor=await getImageExtractor();
     photoStatus.textContent='撮影写真を解析中…';
     const queryVector=await embedImage(extractor,photoUrl);
-    let cropQueryVector=null;
+    let cropQueryVectors=[];
     try{
-      const croppedPhoto=await createCenterCropDataUrl(photoFile);
-      cropQueryVector=await embedImage(extractor,croppedPhoto);
+      const croppedPhotos=await createCropDataUrls(photoFile);
+      for(const croppedPhoto of croppedPhotos){
+        try{cropQueryVectors.push(await embedImage(extractor,croppedPhoto));}
+        catch(cropError){console.warn('切り抜き画像を解析できませんでした。',cropError);}
+      }
     }catch(cropError){
-      console.warn('中央切り抜き検索を利用できませんでした。元の写真で続行します。',cropError);
+      console.warn('切り抜き検索を利用できませんでした。元の写真で続行します。',cropError);
     }
     // Compare every eligible catalog item so products later in the catalog
     // cannot be silently skipped by a fixed 500-item limit.
@@ -456,12 +466,13 @@ search.addEventListener('click',async()=>{
           }
           if(!stopImageSearch){
             const originalScore=cosine(queryVector,vector);
-            const cropScore=cropQueryVector?cosine(cropQueryVector,vector):originalScore;
-            // Blend the best view with the original-photo score. Pure max scoring
-            // can over-promote accidental crop matches; this keeps context in the ranking.
-            const bestScore=Math.max(originalScore,cropScore);
-            const blendedScore=cropQueryVector
-              ? bestScore*0.75+((originalScore+cropScore)/2)*0.25
+            const cropScores=cropQueryVectors.map(qv=>cosine(qv,vector)).sort((a,b)=>b-a);
+            const bestCropScore=cropScores.length?cropScores[0]:originalScore;
+            const secondCropScore=cropScores.length>1?cropScores[1]:bestCropScore;
+            // Keep full-scene context while rewarding products supported by multiple crops.
+            // A single accidental crop match is deliberately not enough to dominate the rank.
+            const blendedScore=cropScores.length
+              ? originalScore*0.30+bestCropScore*0.50+secondCropScore*0.20
               : originalScore;
             scored.push({product:p,score:blendedScore});
           }
