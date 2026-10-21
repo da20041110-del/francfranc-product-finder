@@ -48,6 +48,15 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 <input id="file" type="file" accept="image/*" capture="environment" hidden>
 <input id="libraryFile" type="file" accept="image/*" hidden>
 <img id="photo" alt="撮影した商品写真">
+
+<button id="search" disabled>商品を検索する</button>
+<div class="status" id="photoStatus" role="status">写真検索のAIはまだ未接続です。現在は写真の選択・表示を確認できます。</div>
+
+<section class="card">
+<h2>掲載商品を確認（仮）</h2>
+<p class="note">商品名・品番で候補を探せます。写真から探す場合は、上の写真検索を使ってください。</p>
+<label for="catalogQuery">商品名・品番で検索</label>
+<input id="catalogQuery" type="text" autocomplete="off" placeholder="例：ワイヤーキッチンラック / 1101070063809">
 <details id="categorySettings" style="margin-top:12px">
   <summary style="cursor:pointer;padding:12px 14px;background:#fff;border:1px solid #ddd;border-radius:10px;font-weight:600">検索カテゴリーを絞り込む（通常は全商品を検索）</summary>
 <section class="card" id="categoryFilter" style="margin-top:8px">
@@ -70,14 +79,6 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
   </div>
 </section>
 </details>
-<button id="search" disabled>商品を検索する</button>
-<div class="status" id="photoStatus" role="status">写真検索のAIはまだ未接続です。現在は写真の選択・表示を確認できます。</div>
-
-<section class="card">
-<h2>掲載商品を確認（仮）</h2>
-<p class="note">商品名・品番で候補を探せます。写真から探す場合は、上の写真検索を使ってください。</p>
-<label for="catalogQuery">商品名・品番で検索</label>
-<input id="catalogQuery" type="text" autocomplete="off" placeholder="例：ワイヤーキッチンラック / 1101070063809">
 <div class="status" id="catalogStatus" role="status">カタログを読み込み中です…</div>
 <div id="catalogResults"></div>
 </section>
