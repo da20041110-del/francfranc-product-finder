@@ -100,7 +100,7 @@ const catalogResults=document.getElementById('catalogResults');
 const categoryChoices=[...document.querySelectorAll('.categoryChoice')];
 document.getElementById('selectAllCategories').addEventListener('click',()=>categoryChoices.forEach(el=>el.checked=true));
 document.getElementById('clearCategories').addEventListener('click',()=>categoryChoices.forEach(el=>el.checked=false));
-function getSelectedCategories(){return categoryChoices.filter(el=>el.checked).map(el=>el.value);}
+function getSelectedCategories(){const selected=categoryChoices.filter(el=>el.checked).map(el=>el.value);return selected.length?selected:categoryChoices.map(el=>el.value);}
 function getProductCode(p){
   const explicit=String(p?.itemCode||'').replace(/\D/g,'');
   if(/^\d{13}$/.test(explicit))return explicit;
