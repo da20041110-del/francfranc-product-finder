@@ -58,10 +58,9 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 <input id="libraryFile" type="file" accept="image/*" hidden>
 <img id="photo" alt="撮影した商品写真">
 <div class="camera-guide" id="cameraGuide" role="dialog" aria-modal="true" aria-label="商品撮影">
-<p class="camera-help"><strong>商品全体を白い枠内に収めてください</strong><br>商品に近づき、背景はなるべく少なく撮影しましょう。</p>
+<p class="camera-help"><strong>商品全体を白い枠内に収めてください</strong></p>
 <div class="camera-stage"><video id="cameraVideo" autoplay playsinline muted></video><div class="camera-frame" aria-hidden="true"></div></div>
-<p class="camera-help">枠からはみ出さず、商品全体が入るようにしてください。</p>
-<div class="camera-actions"><button type="button" id="takePhoto">この枠で撮影する</button><button type="button" class="secondary" id="closeCamera">戻る</button></div><canvas id="cameraCanvas" hidden></canvas></div>
+<div class="camera-actions"><button type="button" id="takePhoto">撮影する</button><button type="button" class="secondary" id="closeCamera">戻る</button></div><canvas id="cameraCanvas" hidden></canvas></div>
 
 <button id="search" disabled>商品を検索する</button>
 <div class="status" id="photoStatus" role="status">写真検索のAIはまだ未接続です。現在は写真の選択・表示を確認できます。</div>
