@@ -20,7 +20,7 @@ h2{font-size:18px}
 .camera-guide.open{display:flex}
 .camera-stage{position:relative;width:min(100%,520px);height:min(60vh,620px);display:flex;align-items:center;justify-content:center;overflow:hidden;background:#222;border-radius:12px}
 .camera-stage video{width:100%;height:100%;object-fit:contain}
-.camera-frame{position:absolute;width:min(78%,42vh,390px);aspect-ratio:1;border:2px dashed #fff;border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.28);pointer-events:none}
+.camera-frame{position:absolute;width:min(70%,38vh,340px);aspect-ratio:1;border:2px dashed #fff;border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.28);pointer-events:none}
 .camera-guide .camera-help{font-size:14px;line-height:1.6;text-align:center;max-width:520px;margin:0}
 .camera-actions{display:flex;width:min(100%,520px);gap:10px}
 .camera-actions button{flex:1;margin-top:0}
@@ -338,20 +338,45 @@ cameraPick.addEventListener('click',async()=>{
   }
 });
 document.getElementById('closeCamera').addEventListener('click',stopCamera);
+function syncCameraFrame(){
+  const vw=cameraVideo.videoWidth,vh=cameraVideo.videoHeight;
+  const stage=document.querySelector('.camera-stage');
+  const frame=document.querySelector('.camera-frame');
+  if(!vw||!vh||!stage||!frame)return;
+  const sw=stage.clientWidth,sh=stage.clientHeight;
+  const scale=Math.min(sw/vw,sh/vh);
+  const renderedW=vw*scale,renderedH=vh*scale;
+  const side=Math.max(120,Math.min(renderedW*0.88,renderedH*0.72));
+  frame.style.width=side+'px';
+}
+cameraVideo.addEventListener('loadedmetadata',syncCameraFrame);
+window.addEventListener('resize',syncCameraFrame);
 document.getElementById('takePhoto').addEventListener('click',async()=>{
   const vw=cameraVideo.videoWidth,vh=cameraVideo.videoHeight;
   if(!vw||!vh){photoStatus.textContent='カメラ映像を準備中です。少し待ってから撮影してください。';return;}
-  const side=Math.max(1,Math.round(Math.min(vw,vh)*0.80));
-  const sx=Math.round((vw-side)/2),sy=Math.round((vh-side)/2);
-  cameraCanvas.width=side;cameraCanvas.height=side;
+  const stage=document.querySelector('.camera-stage');
+  const frame=document.querySelector('.camera-frame');
+  const stageRect=stage.getBoundingClientRect();
+  const frameRect=frame.getBoundingClientRect();
+  const scale=Math.min(stageRect.width/vw,stageRect.height/vh);
+  const renderedW=vw*scale,renderedH=vh*scale;
+  const offsetX=(stageRect.width-renderedW)/2;
+  const offsetY=(stageRect.height-renderedH)/2;
+  const left=(frameRect.left-stageRect.left-offsetX)/scale;
+  const top=(frameRect.top-stageRect.top-offsetY)/scale;
+  const width=frameRect.width/scale,height=frameRect.height/scale;
+  const sx=Math.max(0,Math.round(left)),sy=Math.max(0,Math.round(top));
+  const sw=Math.max(1,Math.min(vw-sx,Math.round(width)));
+  const sh=Math.max(1,Math.min(vh-sy,Math.round(height)));
+  cameraCanvas.width=sw;cameraCanvas.height=sh;
   const ctx=cameraCanvas.getContext('2d');
   if(!ctx){photoStatus.textContent='撮影画像を作成できませんでした。';return;}
-  ctx.drawImage(cameraVideo,sx,sy,side,side,0,0,side,side);
+  ctx.drawImage(cameraVideo,sx,sy,sw,sh,0,0,sw,sh);
   const blob=await new Promise(resolve=>cameraCanvas.toBlob(resolve,'image/jpeg',0.92));
   if(!blob){photoStatus.textContent='撮影画像を作成できませんでした。';return;}
   const capturedFile=new File([blob],'product-photo.jpg',{type:'image/jpeg',lastModified:Date.now()});
   await stopCamera();
-  handlePhotoFile(capturedFile,'枠内を切り抜いて撮影しました。商品全体が写っているか確認してから検索してください。');
+  handlePhotoFile(capturedFile,'画面の枠に合わせて切り抜きました。商品全体が写っているか確認してから検索してください。');
 });
 libraryPick.addEventListener('click',()=>libraryFile.click());
 function handlePhotoFile(f,message){
