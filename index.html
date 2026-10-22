@@ -7,7 +7,7 @@
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f7f6f4;color:#333;font-family:Arial,"Noto Sans JP",sans-serif}
-header{background:#fff;padding:20px;text-align:center;border-bottom:1px solid #e5e0dc}
+header{background:#fff;padding:20px 76px 20px 20px;text-align:center;border-bottom:1px solid #e5e0dc}\n#clearApp{position:fixed;top:12px;right:12px;z-index:900;width:auto;margin:0;padding:10px 14px;background:#fff;color:#333;border:1px solid #aaa;border-radius:999px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 header h1{font-size:22px;letter-spacing:2px;margin:0}
 header p{font-size:12px;color:#777;margin:7px 0 0}
 main{max-width:520px;margin:auto;padding:20px}
@@ -108,6 +108,36 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 </main>
 <footer>社内利用を想定した試作画面 · 未確認コードでのレジ処理は禁止</footer>
 <script>
+const clearAppButton=document.getElementById('clearApp');
+clearAppButton.addEventListener('click',()=>{
+  // Stop any in-progress image comparison and release the selected photo URL.
+  stopImageSearch=true;
+  if(photo.dataset.url){URL.revokeObjectURL(photo.dataset.url);delete photo.dataset.url;}
+  selectedPhotoFile=null;
+  file.value='';
+  libraryFile.value='';
+  photo.removeAttribute('src');
+  photo.style.display='none';
+  document.getElementById('search').disabled=true;
+  photoStatus.className='status';
+  photoStatus.textContent='写真を選ぶと商品検索を開始できます。';
+  catalogQuery.value='';
+  lastCatalogQuery='';
+  catalogVisibleCount=30;
+  catalogResults.innerHTML='';
+  catalogResults.style.display='none';
+  catalogStatus.textContent='商品名・品番を入力すると候補が表示されます。写真から探す場合は、上の「商品を検索する」を使ってください。';
+  document.getElementById('jan').value='';
+  document.getElementById('barcodeCard').style.display='none';
+  document.getElementById('barcode').innerHTML='';
+  document.getElementById('barcodeStatus').textContent='品番を入力すると、チェックデジットを確認してバーコードを表示します。';
+  const officialLink=document.getElementById('officialProductLink');
+  officialLink.href='#';
+  officialLink.hidden=true;
+  document.querySelectorAll('.categoryChoice').forEach(el=>el.checked=false);
+  if(document.getElementById('cameraGuide').classList.contains('open'))closeCamera();
+  window.scrollTo({top:0,behavior:'smooth'});
+});
 const catalogQuery=document.getElementById('catalogQuery');
 const catalogStatus=document.getElementById('catalogStatus');
 const catalogResults=document.getElementById('catalogResults');
