@@ -7,7 +7,7 @@
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f7f6f4;color:#333;font-family:Arial,"Noto Sans JP",sans-serif}
-header{background:#fff;padding:20px 76px 20px 20px;text-align:center;border-bottom:1px solid #e5e0dc}\n#clearApp{position:fixed;top:12px;right:12px;z-index:900;width:auto;margin:0;padding:10px 14px;background:#fff;color:#333;border:1px solid #aaa;border-radius:999px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+header{background:#fff;padding:20px 76px 20px 20px;text-align:center;border-bottom:1px solid #e5e0dc}\n#clearApp{position:fixed!important;right:18px!important;bottom:calc(22px + env(safe-area-inset-bottom,0px))!important;top:auto!important;left:auto!important;z-index:2147483647!important;width:58px!important;height:58px!important;min-width:58px!important;min-height:58px!important;margin:0!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#333!important;color:#fff!important;border:2px solid #fff!important;border-radius:50%!important;font-size:14px!important;font-weight:700!important;box-shadow:0 3px 12px rgba(0,0,0,.3)!important;appearance:none;-webkit-appearance:none;touch-action:manipulation}
 header h1{font-size:22px;letter-spacing:2px;margin:0}
 header p{font-size:12px;color:#777;margin:7px 0 0}
 main{max-width:520px;margin:auto;padding:20px}
@@ -41,7 +41,7 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 </style>
 </head>
 <body>
-<button type="button" id="clearApp" onclick="window.location.reload()" aria-label="写真と検索結果をクリア">クリア</button>
+<button type="button" id="clearApp" onclick="window.location.reload()" aria-label="写真と検索結果をクリア" title="写真と検索結果をクリア">クリア</button>
 <header>
 <h1>Francfranc</h1>
 <p>PRODUCT FINDER · 社内業務用 試作版</p>
