@@ -41,7 +41,7 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 </style>
 </head>
 <body>
-<button type="button" id="clearApp" onclick="window.location.reload()" aria-label="写真と検索結果をクリア" title="写真と検索結果をクリア">クリア</button>
+<button type="button" id="clearApp" onclick="window.location.reload()" aria-label="写真と検索結果をクリア" title="写真と検索結果をクリア" style="position:fixed!important;right:18px!important;bottom:calc(22px + env(safe-area-inset-bottom,0px))!important;top:auto!important;left:auto!important;z-index:2147483647!important;width:58px!important;height:58px!important;min-width:58px!important;min-height:58px!important;margin:0!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#333!important;color:#fff!important;border:2px solid #fff!important;border-radius:50%!important;font-size:14px!important;font-weight:700!important;box-shadow:0 3px 12px rgba(0,0,0,.3)!important">クリア</button>
 <header>
 <h1>Francfranc</h1>
 <p>PRODUCT FINDER · 社内業務用 試作版</p>
@@ -51,8 +51,8 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 <p class="note">店頭の商品を撮影、または写真を選択してください。</p>
 <div class="upload">
 <strong>📷 商品写真を選ぶ</strong>
-<button type="button" id="cameraPick" onclick="document.getElementById(\'file\').click()">カメラで撮影する</button>
-<button type="button" id="libraryPick" onclick="document.getElementById(\'libraryFile\').click()" style="background:#fff;color:#333;border:1px solid #aaa">写真ライブラリから選ぶ</button>
+<button type="button" id="cameraPick">カメラで撮影する</button>
+<button type="button" id="libraryPick" style="background:#fff;color:#333;border:1px solid #aaa">写真ライブラリから選ぶ</button>
 <span class="note">撮影する方法と、保存済み写真を選ぶ方法を分けました。</span>
 </div>
 <input id="file" type="file" accept="image/*" capture="environment" hidden>
@@ -356,8 +356,19 @@ async function stopCamera(){
   cameraVideo.srcObject=null;
   cameraGuide.classList.remove('open');
 }
-// Use native iOS file inputs for reliable camera and photo-library launch.
-cameraPick.addEventListener('click',()=>file.click());
+cameraPick.addEventListener('click',async()=>{
+  if(!navigator.mediaDevices?.getUserMedia){file.click();return;}
+  try{
+    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+    cameraVideo.srcObject=cameraStream;
+    cameraGuide.classList.add('open');
+    await cameraVideo.play();
+  }catch(error){
+    await stopCamera();
+    photoStatus.textContent='カメラを起動できませんでした。カメラの使用を許可するか、写真ライブラリから選んでください。';
+    file.click();
+  }
+});
 libraryPick.addEventListener('click',()=>libraryFile.click());
 document.getElementById('closeCamera').addEventListener('click',stopCamera);
 function syncCameraFrame(){
