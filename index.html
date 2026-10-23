@@ -419,7 +419,7 @@ document.getElementById('takePhoto').addEventListener('click',async()=>{
   await stopCamera();
   handlePhotoFile(capturedFile,'画面の枠に合わせて切り抜きました。商品全体が写っているか確認してから検索してください。');
 });
-libraryPick.addEventListener('click',()=>libraryFile.click());
+if(libraryPick)libraryPick.addEventListener('click',()=>libraryFile.click());
 function handlePhotoFile(f,message){
   if(!f)return;
   selectedPhotoFile=f;
