@@ -52,11 +52,11 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 <div class="upload">
 <strong>📷 商品写真を選ぶ</strong>
 <button type="button" id="cameraPick">カメラで撮影する</button>
-<label for="libraryFile" id="libraryPick" style="display:block;background:#fff;color:#333;border:1px solid #aaa;border-radius:12px;padding:18px;text-align:center;cursor:pointer">写真ライブラリから選ぶ</label>
+<label id="libraryPick" style="position:relative;display:block;background:#fff;color:#333;border:1px solid #aaa;border-radius:12px;padding:18px;text-align:center;cursor:pointer">写真ライブラリから選ぶ<input id="libraryFile" type="file" accept="image/*" aria-label="写真ライブラリから選ぶ" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer"></label>
 <span class="note">撮影する方法と、保存済み写真を選ぶ方法を分けました。</span>
 </div>
 <input id="file" type="file" accept="image/*" capture="environment" hidden>
-<input id="libraryFile" type="file" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
+
 <img id="photo" alt="撮影した商品写真">
 <div class="camera-guide" id="cameraGuide" role="dialog" aria-modal="true" aria-label="商品撮影">
 <p class="camera-help"><strong>商品全体を白い枠内に収めてください</strong></p>
@@ -369,7 +369,7 @@ cameraPick.addEventListener('click',async()=>{
     file.click();
   }
 });
-libraryFile.addEventListener('click',()=>{photoStatus.className='status';photoStatus.textContent='写真ライブラリを開いています…';});
+libraryFile.addEventListener('change',()=>{if(libraryFile.files&&libraryFile.files.length){handlePhotoChange(libraryFile);}else{photoStatus.className='status';photoStatus.textContent='写真が選択されませんでした。もう一度お試しください。';}});
 document.getElementById('closeCamera').addEventListener('click',stopCamera);
 function syncCameraFrame(){
   const vw=cameraVideo.videoWidth,vh=cameraVideo.videoHeight;
