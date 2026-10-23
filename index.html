@@ -414,28 +414,12 @@ document.getElementById('takePhoto').addEventListener('click',async()=>{
 libraryPick.addEventListener('click',()=>libraryFile.click());
 function handlePhotoFile(f,message){
   if(!f)return;
-  if(photo.dataset.url)URL.revokeObjectURL(photo.dataset.url);
-  const url=URL.createObjectURL(f);
-  photo.dataset.url=url;
   selectedPhotoFile=f;
-  photo.style.display='none';
-  search.disabled=true;
-  photoStatus.className='status';
-  photoStatus.textContent='写真を読み込み中です…';
-  photo.onload=()=>{
-    photo.style.display='block';
-    search.disabled=false;
-    photoStatus.className='status';
-    photoStatus.textContent=message||'写真を読み込みました。「商品を検索する」を押すと、公式掲載商品の画像と比較します。';
-  };
-  photo.onerror=()=>{
-    photo.style.display='none';
-    search.disabled=true;
-    photoStatus.className='status error';
-    photoStatus.textContent='写真を表示できませんでした。別の写真を選んでください。';
-    if(photo.dataset.url){URL.revokeObjectURL(photo.dataset.url);delete photo.dataset.url;}
-  };
-  photo.src=url;
+  photo.style.display='none';search.disabled=true;photoStatus.className='status';photoStatus.textContent='写真を読み込み中です…';
+  const reader=new FileReader();
+  reader.onload=()=>{const dataUrl=reader.result;const probe=new Image();probe.onload=()=>{photo.onload=()=>{photo.style.display='block';search.disabled=false;photoStatus.className='status';photoStatus.textContent=message||'写真を読み込みました。「商品を検索する」を押すと、公式掲載商品の画像と比較します。';};photo.onerror=()=>{photo.style.display='none';search.disabled=true;photoStatus.className='status error';photoStatus.textContent='写真を画面に表示できませんでした。別の写真を選んでください。';};photo.src=dataUrl;};probe.onerror=()=>{photoStatus.className='status error';photoStatus.textContent='選んだファイルを画像として読み込めませんでした。別の写真を選んでください。';};probe.src=dataUrl;};
+  reader.onerror=()=>{photoStatus.className='status error';photoStatus.textContent='写真の読み込みに失敗しました。もう一度選んでください。';};
+  reader.readAsDataURL(f);
 }
 function handlePhotoChange(input){
   const f=input.files[0];
