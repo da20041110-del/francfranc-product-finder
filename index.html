@@ -109,6 +109,14 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 </main>
 <footer>社内利用を想定した試作画面 · 未確認コードでのレジ処理は禁止</footer>
 <script>
+window.addEventListener('error',function(event){
+  const status=document.getElementById('photoStatus');
+  if(status){status.className='status error';status.textContent='アプリ内エラー：'+(event.message||'原因不明')+'（行 '+(event.lineno||'?')+'）';}
+});
+window.addEventListener('unhandledrejection',function(event){
+  const status=document.getElementById('photoStatus');
+  if(status){status.className='status error';status.textContent='検索準備エラー：'+(event.reason?.message||String(event.reason||'原因不明'));}
+});
 const clearAppButton=document.getElementById('clearApp');
 clearAppButton.addEventListener('click',()=>{
   // Stop any in-progress image comparison and release the selected photo URL.
