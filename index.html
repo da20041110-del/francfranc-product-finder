@@ -354,14 +354,14 @@ const cameraCanvas=document.getElementById('cameraCanvas');
 async function stopCamera(){
   if(cameraStream){cameraStream.getTracks().forEach(track=>track.stop());cameraStream=null;}
   cameraVideo.srcObject=null;
-  cameraGuide.classList.remove('open');
+  cameraGuide.classList.remove('open');document.getElementById('clearApp').style.display='flex';
 }
 cameraPick.addEventListener('click',async()=>{
   if(!navigator.mediaDevices?.getUserMedia){file.click();return;}
   try{
     cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
     cameraVideo.srcObject=cameraStream;
-    cameraGuide.classList.add('open');
+    cameraGuide.classList.add('open');document.getElementById('clearApp').style.display='none';
     await cameraVideo.play();
   }catch(error){
     await stopCamera();
