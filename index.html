@@ -63,7 +63,7 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 <div class="camera-stage"><video id="cameraVideo" autoplay playsinline muted></video><div class="camera-frame" aria-hidden="true"></div></div>
 <div class="camera-actions"><button type="button" id="takePhoto">撮影する</button><button type="button" class="secondary" id="closeCamera">戻る</button></div><canvas id="cameraCanvas" hidden></canvas></div>
 
-<button id="search" disabled>商品を検索する</button>
+<button id="search" type="button" onclick="document.getElementById('photoStatus').textContent='検索ボタンを押しました。処理を確認しています…';">商品を検索する</button>
 <div class="status" id="photoStatus" role="status">写真検索のAIはまだ未接続です。現在は写真の選択・表示を確認できます。</div>
 
 <section class="card">
