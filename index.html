@@ -417,11 +417,25 @@ function handlePhotoFile(f,message){
   if(photo.dataset.url)URL.revokeObjectURL(photo.dataset.url);
   const url=URL.createObjectURL(f);
   photo.dataset.url=url;
-  photo.src=url;
-  photo.style.display='block';
-  search.disabled=false;
   selectedPhotoFile=f;
-  photoStatus.textContent=message||'写真を読み込みました。「商品を検索する」を押すと、公式掲載商品の画像と比較します。';
+  photo.style.display='none';
+  search.disabled=true;
+  photoStatus.className='status';
+  photoStatus.textContent='写真を読み込み中です…';
+  photo.onload=()=>{
+    photo.style.display='block';
+    search.disabled=false;
+    photoStatus.className='status';
+    photoStatus.textContent=message||'写真を読み込みました。「商品を検索する」を押すと、公式掲載商品の画像と比較します。';
+  };
+  photo.onerror=()=>{
+    photo.style.display='none';
+    search.disabled=true;
+    photoStatus.className='status error';
+    photoStatus.textContent='写真を表示できませんでした。別の写真を選んでください。';
+    if(photo.dataset.url){URL.revokeObjectURL(photo.dataset.url);delete photo.dataset.url;}
+  };
+  photo.src=url;
 }
 function handlePhotoChange(input){
   const f=input.files[0];
