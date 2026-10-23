@@ -52,7 +52,7 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 <div class="upload">
 <strong>📷 商品写真を選ぶ</strong>
 <button type="button" id="cameraPick">カメラで撮影する</button>
-<label id="libraryPick" style="position:relative;display:block;background:#fff;color:#333;border:1px solid #aaa;border-radius:12px;padding:18px;text-align:center;cursor:pointer">写真ライブラリから選ぶ<input id="libraryFile" type="file" accept="image/*" aria-label="写真ライブラリから選ぶ" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer"></label>
+<div style="margin-top:12px"><label for="libraryFile" style="display:block;margin-bottom:8px;font-weight:600">写真ライブラリから選ぶ</label><input id="libraryFile" type="file" accept="image/*" aria-label="写真ライブラリから選ぶ" style="display:block;width:100%;min-height:56px;padding:10px;background:#fff;color:#333;border:1px solid #aaa;border-radius:12px;font-size:16px"></div>
 <span class="note">撮影する方法と、保存済み写真を選ぶ方法を分けました。</span>
 </div>
 <input id="file" type="file" accept="image/*" capture="environment" hidden>
@@ -447,6 +447,7 @@ function handlePhotoChange(input){
 }
 file.addEventListener('change',()=>handlePhotoChange(file));
 libraryFile.addEventListener('change',()=>handlePhotoChange(libraryFile));
+
 let imageSearchBusy=false;
 let stopImageSearch=false;
 let imageExtractorPromise=null;
