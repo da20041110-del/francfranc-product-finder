@@ -544,13 +544,24 @@ search.addEventListener('fr-search',async()=>{
   // Never block the button on image-features.json.
   const featuresLoaded=productImageFeatures.size;
   photoStatus.textContent='検索候補を準備中です…';
-  const selectedCategories=getSelectedCategories();
-  const candidates=catalogProducts.filter(p=>{
-    if(!p.image||!p.title)return false;
-    if(!selectedCategories.length)return true;
-    const code=getProductCode(p);
-    return code.length>=4&&selectedCategories.includes(code.slice(2,4));
-  });
+  photoStatus.textContent='検索候補を準備中です…（カタログ '+catalogProducts.length+'件）';
+  let selectedCategories=[];
+  let candidates=[];
+  try{
+    selectedCategories=getSelectedCategories();
+    candidates=catalogProducts.filter(p=>{
+      if(!p.image||!p.title)return false;
+      if(!selectedCategories.length)return true;
+      const code=getProductCode(p);
+      return code.length>=4&&selectedCategories.includes(code.slice(2,4));
+    });
+  }catch(prepError){
+    photoStatus.className='status error';
+    photoStatus.textContent='検索候補の準備でエラー：'+(prepError?.message||String(prepError));
+    imageSearchBusy=false;search.disabled=false;return;
+  }
+  photoStatus.textContent='検索候補 '+candidates.length+'件を確認しました。画像解析を準備中…';
+  /* candidates already prepared above */
   if(!candidates.length){photoStatus.textContent='選択したカテゴリーに、比較できる商品画像がありません。カテゴリーを増やして再検索してください。';return;}
   const precomputedCandidateCount=candidates.filter(p=>productImageFeatures.has(p.image)).length;
   const searchStartedAt=performance.now();
