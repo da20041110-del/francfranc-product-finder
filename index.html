@@ -537,17 +537,18 @@ search.addEventListener('click',async()=>{
   const photoFile=selectedPhotoFile;
   if(!photoFile){photoStatus.textContent='先に商品写真を選んでください。';return;}
   if(!catalogProducts.length){photoStatus.textContent='検索用カタログがまだありません。先にカタログ更新を実行してください。';return;}
+  imageSearchBusy=true;stopImageSearch=false;search.disabled=true;
+  photoStatus.className='status';
+  photoStatus.textContent='検索を準備中です…';
   const selectedCategories=getSelectedCategories();
-  if(!selectedCategories.length){photoStatus.textContent='先に商品カテゴリーを1つ以上選択してください。不明な場合は「全部選択」を押してください。';document.getElementById('categoryFilter').scrollIntoView({behavior:'smooth',block:'center'});return;}
-  const featuresLoaded=await imageFeaturesReady;
   const candidates=catalogProducts.filter(p=>{
     if(!p.image||!p.title)return false;
+    if(!selectedCategories.length)return true;
     const code=getProductCode(p);
     return code.length>=4&&selectedCategories.includes(code.slice(2,4));
   });
   if(!candidates.length){photoStatus.textContent='選択したカテゴリーに、比較できる商品画像がありません。カテゴリーを増やして再検索してください。';return;}
   const precomputedCandidateCount=candidates.filter(p=>productImageFeatures.has(p.image)).length;
-  imageSearchBusy=true;stopImageSearch=false;search.disabled=true;
   const searchStartedAt=performance.now();
   const photoUrl=URL.createObjectURL(photoFile);
   const scored=[];
