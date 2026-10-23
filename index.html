@@ -540,19 +540,9 @@ search.addEventListener('fr-search',async()=>{
   if(!photoFile){photoStatus.textContent='先に商品写真を選んでください。';return;}
   if(!catalogProducts.length){photoStatus.className='status error';photoStatus.textContent='商品カタログが読み込まれていません。少し待ってから再読み込みしてください。';return;}
   imageSearchBusy=true;stopImageSearch=false;search.disabled=true;
-  photoStatus.className='status';
-  photoStatus.textContent='事前解析データを確認中です…';
-  // Do not let a slow or stalled feature-file request freeze the entire search.
-  // Continue with on-demand image embeddings if the precomputed file is slow.
-  let featuresLoaded=productImageFeatures.size;
-  try{
-    featuresLoaded=await Promise.race([
-      imageFeaturesReady,
-      new Promise(resolve=>setTimeout(()=>resolve(productImageFeatures.size),8000))
-    ]);
-  }catch(featureError){
-    console.warn('事前解析データを利用できません。通常の画像比較で続行します。',featureError);
-  }
+  // Search immediately; precomputed features continue loading in the background.
+  // Never block the button on image-features.json.
+  const featuresLoaded=productImageFeatures.size;
   photoStatus.textContent='検索候補を準備中です…';
   const selectedCategories=getSelectedCategories();
   const candidates=catalogProducts.filter(p=>{
