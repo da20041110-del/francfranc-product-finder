@@ -202,8 +202,10 @@ function renderProgressCandidates(scored){
 let catalogProducts=[];
 let productImageFeatures=new Map();
 let imageFeaturesLoadError='';
+const imageFeaturesLoadStartedAt=performance.now();
+let imageFeaturesLoadElapsedMs=null;
 let imageFeaturesMetadata={catalogGeneratedAt:null,generatedAt:null,declaredCount:0};
-let imageFeaturesReady=fetch('./image-features.json?v=20261025',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(data=>{imageFeaturesMetadata={catalogGeneratedAt:data.catalogGeneratedAt||null,generatedAt:data.generatedAt||null,declaredCount:Object.keys(data.features||{}).length};const entries=Object.entries(data.features||{});for(const [url,encoded] of entries){if(typeof encoded!=='string')continue;const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));productImageFeatures.set(url,Array.from(new Int8Array(bytes.buffer),v=>v/127));}return productImageFeatures.size;}).catch(error=>{imageFeaturesLoadError=error?.message||String(error);console.warn('事前解析データを読み込めませんでした:',error);return 0;});
+let imageFeaturesReady=fetch('./image-features.json?v=20261025',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(data=>{imageFeaturesMetadata={catalogGeneratedAt:data.catalogGeneratedAt||null,generatedAt:data.generatedAt||null,declaredCount:Object.keys(data.features||{}).length};const entries=Object.entries(data.features||{});for(const [url,encoded] of entries){if(typeof encoded!=='string')continue;const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));productImageFeatures.set(url,Array.from(new Int8Array(bytes.buffer),v=>v/127));}imageFeaturesLoadElapsedMs=performance.now()-imageFeaturesLoadStartedAt;return productImageFeatures.size;}).catch(error=>{imageFeaturesLoadElapsedMs=performance.now()-imageFeaturesLoadStartedAt;imageFeaturesLoadError=error?.message||String(error);console.warn('事前解析データを読み込めませんでした:',error);return 0;});
 function escapeHtml(value=''){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function getSeriesKey(title=''){
   let s=normalizeJapaneseSearch(title);
@@ -576,20 +578,28 @@ search.addEventListener('click',async()=>{
   /* candidates already prepared above */
   if(!candidates.length){photoStatus.textContent='選択したカテゴリーに、比較できる商品画像がありません。カテゴリーを増やして再検索してください。';return;}
   const searchStartedAt=performance.now();
+  let modelLoadMs=0,queryEmbedMs=0,cropEmbedMs=0,featureWaitMs=0,compareMs=0;
   const photoUrl=URL.createObjectURL(photoFile);
   const scored=[];
   try{
+    let phaseStartedAt=performance.now();
     const extractor=await getImageExtractor();
+    modelLoadMs=performance.now()-phaseStartedAt;
     photoStatus.textContent='撮影写真を解析中…';
+    phaseStartedAt=performance.now();
     const queryVector=await embedImage(extractor,photoUrl);
+    queryEmbedMs=performance.now()-phaseStartedAt;
     let cropQueryVectors=[];
     try{
+      phaseStartedAt=performance.now();
       const croppedPhotos=await createCropDataUrls(photoFile);
       for(const croppedPhoto of croppedPhotos){
         try{cropQueryVectors.push(await embedImage(extractor,croppedPhoto));}
         catch(cropError){console.warn('切り抜き画像を解析できませんでした。',cropError);}
       }
+      cropEmbedMs=performance.now()-phaseStartedAt;
     }catch(cropError){
+      cropEmbedMs=performance.now()-phaseStartedAt;
       console.warn('切り抜き検索を利用できませんでした。元の写真で続行します。',cropError);
     }
     // Let the precomputed-vector file finish decoding before comparing products.
@@ -597,7 +607,9 @@ search.addEventListener('click',async()=>{
     if(productImageFeatures.size===0){
       photoStatus.textContent='事前解析データを読み込み中です…';
     }
+    phaseStartedAt=performance.now();
     await imageFeaturesReady;
+    featureWaitMs=performance.now()-phaseStartedAt;
     const featuresLoaded=productImageFeatures.size;
     const precomputedCandidateCount=candidates.filter(p=>productImageFeatures.has(p.image)).length;
     const catalogImageCount=catalogProducts.filter(p=>p.image).length;
@@ -660,7 +672,9 @@ search.addEventListener('click',async()=>{
         }
       }
     }
+    phaseStartedAt=performance.now();
     await Promise.all(Array.from({length:workerCount},()=>compareWorker()));
+    compareMs=performance.now()-phaseStartedAt;
     if(stopImageSearch)return;
     scored.sort((a,b)=>b.score-a.score);
     catalogResults.style.display='block';
@@ -708,7 +722,8 @@ search.addEventListener('click',async()=>{
       catalogResults.appendChild(card);
     }
     const elapsedSeconds=((performance.now()-searchStartedAt)/1000).toFixed(1);
-    photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒、対象は${candidates.length}件、事前解析済み対象は${precomputedCandidateCount}件、解析済み総数は${featuresLoaded}件（JSON内${imageFeaturesMetadata.declaredCount}件）、カタログ画像${catalogImageCount}件・未対応${catalogImageFeatureMissing}件、解析データのカタログ更新日時${imageFeaturesMetadata.catalogGeneratedAt||'不明'}${featureCatalogDateMismatch?'【カタログ更新日時不一致】':''}です。上位候補から商品を確認してください。`;
+    const phaseDiagnostics=`内訳：モデル ${(modelLoadMs/1000).toFixed(1)}秒／撮影写真 ${(queryEmbedMs/1000).toFixed(1)}秒／切り抜き ${(cropEmbedMs/1000).toFixed(1)}秒／事前解析待ち ${(featureWaitMs/1000).toFixed(1)}秒／商品比較 ${(compareMs/1000).toFixed(1)}秒／事前解析データ読込 ${(imageFeaturesLoadElapsedMs===null?'計測中':(imageFeaturesLoadElapsedMs/1000).toFixed(1)+'秒')}`;
+    photoStatus.textContent=`検索完了。${phaseDiagnostics}。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒、対象は${candidates.length}件、事前解析済み対象は${precomputedCandidateCount}件、解析済み総数は${featuresLoaded}件（JSON内${imageFeaturesMetadata.declaredCount}件）、カタログ画像${catalogImageCount}件・未対応${catalogImageFeatureMissing}件、解析データのカタログ更新日時${imageFeaturesMetadata.catalogGeneratedAt||'不明'}${featureCatalogDateMismatch?'【カタログ更新日時不一致】':''}です。上位候補から商品を確認してください。`;
     catalogResults.style.display='block';
     catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){
