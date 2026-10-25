@@ -201,7 +201,8 @@ function renderProgressCandidates(scored){
 }
 let catalogProducts=[];
 let productImageFeatures=new Map();
-let imageFeaturesReady=fetch('./image-features.json',{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error('features not ready');return r.json();}).then(data=>{const entries=Object.entries(data.features||{});for(const [url,encoded] of entries){if(typeof encoded!=='string')continue;const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));productImageFeatures.set(url,Array.from(new Int8Array(bytes.buffer),v=>v/127));}return productImageFeatures.size;}).catch(()=>0);
+let imageFeaturesLoadError='';
+let imageFeaturesReady=fetch('./image-features.json',{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(data=>{const entries=Object.entries(data.features||{});for(const [url,encoded] of entries){if(typeof encoded!=='string')continue;const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));productImageFeatures.set(url,Array.from(new Int8Array(bytes.buffer),v=>v/127));}return productImageFeatures.size;}).catch(error=>{imageFeaturesLoadError=error?.message||String(error);console.warn('事前解析データを読み込めませんでした:',error);return 0;});
 function escapeHtml(value=''){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function getSeriesKey(title=''){
   let s=normalizeJapaneseSearch(title);
@@ -596,6 +597,9 @@ search.addEventListener('click',async()=>{
     await imageFeaturesReady;
     const featuresLoaded=productImageFeatures.size;
     const precomputedCandidateCount=candidates.filter(p=>productImageFeatures.has(p.image)).length;
+    if(imageFeaturesLoadError){
+      photoStatus.textContent='事前解析データの読み込みに失敗しました（'+imageFeaturesLoadError+'）。未解析画像は検索中に処理するため、通常より時間がかかる場合があります。';
+    }
     // Compare every eligible catalog item so products later in the catalog
     // cannot be silently skipped by a fixed 500-item limit.
     const maxToCheck=candidates.length;
