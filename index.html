@@ -325,6 +325,7 @@ function selectProduct(p,card){
   photoStatus.textContent='商品を選択しました。商品名・価格・品番・バーコードを確認してください。';
   barcodeCard.scrollIntoView({behavior:'smooth',block:'start'});
 }
+let catalogDataGeneratedAt=null;
 let catalogRenderTimer=null;
 catalogQuery.addEventListener('input',()=>{
   // Keep the focused search field stable on iOS while the results below it change.
@@ -345,6 +346,7 @@ catalogQuery.addEventListener('input',()=>{
 let catalogLoadTimer=setTimeout(()=>{if(!catalogProducts.length)catalogStatus.textContent='カタログの読み込みに時間がかかっています。通信を確認して、ページを開き直してください。';},12000);
 fetch('./catalog.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('catalog.json HTTP '+r.status);return r.json();}).then(data=>{
   catalogProducts=Array.isArray(data.products)?data.products:[];
+  catalogDataGeneratedAt=data.generatedAt||null;
   const withImage=catalogProducts.filter(p=>p.image).length;
   const withCode=catalogProducts.filter(p=>/^\\d{13}$/.test(getProductCode(p))).length;
   catalogStatus.textContent='カタログ取得日時：'+(data.generatedAt||'不明')+' / 取得URL '+(data.attempted??'?')+'件、商品データ '+catalogProducts.length+'件（画像 '+withImage+'件・13桁品番 '+withCode+'件）';
