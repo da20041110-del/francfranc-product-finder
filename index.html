@@ -202,7 +202,8 @@ function renderProgressCandidates(scored){
 let catalogProducts=[];
 let productImageFeatures=new Map();
 let imageFeaturesLoadError='';
-let imageFeaturesReady=fetch('./image-features.json?v=20261025',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(data=>{const entries=Object.entries(data.features||{});for(const [url,encoded] of entries){if(typeof encoded!=='string')continue;const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));productImageFeatures.set(url,Array.from(new Int8Array(bytes.buffer),v=>v/127));}return productImageFeatures.size;}).catch(error=>{imageFeaturesLoadError=error?.message||String(error);console.warn('事前解析データを読み込めませんでした:',error);return 0;});
+let imageFeaturesMetadata={catalogGeneratedAt:null,generatedAt:null,declaredCount:0};
+let imageFeaturesReady=fetch('./image-features.json?v=20261025',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(data=>{imageFeaturesMetadata={catalogGeneratedAt:data.catalogGeneratedAt||null,generatedAt:data.generatedAt||null,declaredCount:Object.keys(data.features||{}).length};const entries=Object.entries(data.features||{});for(const [url,encoded] of entries){if(typeof encoded!=='string')continue;const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));productImageFeatures.set(url,Array.from(new Int8Array(bytes.buffer),v=>v/127));}return productImageFeatures.size;}).catch(error=>{imageFeaturesLoadError=error?.message||String(error);console.warn('事前解析データを読み込めませんでした:',error);return 0;});
 function escapeHtml(value=''){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function getSeriesKey(title=''){
   let s=normalizeJapaneseSearch(title);
@@ -597,6 +598,9 @@ search.addEventListener('click',async()=>{
     await imageFeaturesReady;
     const featuresLoaded=productImageFeatures.size;
     const precomputedCandidateCount=candidates.filter(p=>productImageFeatures.has(p.image)).length;
+    const catalogImageCount=catalogProducts.filter(p=>p.image).length;
+    const catalogImageFeatureMissing=catalogProducts.filter(p=>p.image&&!productImageFeatures.has(p.image)).length;
+    const featureCatalogDateMismatch=Boolean(imageFeaturesMetadata.catalogGeneratedAt&&catalogDataGeneratedAt&&imageFeaturesMetadata.catalogGeneratedAt!==catalogDataGeneratedAt);
     if(imageFeaturesLoadError){
       photoStatus.textContent='事前解析データの読み込みに失敗しました（'+imageFeaturesLoadError+'）。未解析画像は検索中に処理するため、通常より時間がかかる場合があります。';
     }
@@ -702,7 +706,7 @@ search.addEventListener('click',async()=>{
       catalogResults.appendChild(card);
     }
     const elapsedSeconds=((performance.now()-searchStartedAt)/1000).toFixed(1);
-    photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒、対象は${candidates.length}件、事前解析済みは${precomputedCandidateCount}件、全体の事前解析済み画像は${featuresLoaded}件です。上位候補から商品を確認してください。`;
+    photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒、対象は${candidates.length}件、事前解析済み対象は${precomputedCandidateCount}件、解析済み総数は${featuresLoaded}件（JSON内${imageFeaturesMetadata.declaredCount}件）、カタログ画像${catalogImageCount}件・未対応${catalogImageFeatureMissing}件、解析データのカタログ更新日時${imageFeaturesMetadata.catalogGeneratedAt||'不明'}${featureCatalogDateMismatch?'【カタログ更新日時不一致】':''}です。上位候補から商品を確認してください。`;
     catalogResults.style.display='block';
     catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){
