@@ -550,9 +550,7 @@ search.addEventListener('click',async()=>{
   if(!photoFile){photoStatus.textContent='先に商品写真を選んでください。';return;}
   if(!catalogProducts.length){photoStatus.className='status error';photoStatus.textContent='商品カタログが読み込まれていません。少し待ってから再読み込みしてください。';return;}
   imageSearchBusy=true;stopImageSearch=false;search.disabled=true;
-  // Search immediately; precomputed features continue loading in the background.
-  // Never block the button on image-features.json.
-  const featuresLoaded=productImageFeatures.size;
+  // Start model loading and query-photo analysis while the precomputed catalog vectors finish loading.
   photoStatus.textContent='検索候補を準備中です…';
   photoStatus.textContent='検索候補を準備中です…（カタログ '+catalogProducts.length+'件）';
   let selectedCategories=[];
@@ -573,7 +571,6 @@ search.addEventListener('click',async()=>{
   photoStatus.textContent='検索候補 '+candidates.length+'件を確認しました。画像解析を準備中…';
   /* candidates already prepared above */
   if(!candidates.length){photoStatus.textContent='選択したカテゴリーに、比較できる商品画像がありません。カテゴリーを増やして再検索してください。';return;}
-  const precomputedCandidateCount=candidates.filter(p=>productImageFeatures.has(p.image)).length;
   const searchStartedAt=performance.now();
   const photoUrl=URL.createObjectURL(photoFile);
   const scored=[];
@@ -591,6 +588,14 @@ search.addEventListener('click',async()=>{
     }catch(cropError){
       console.warn('切り抜き検索を利用できませんでした。元の写真で続行します。',cropError);
     }
+    // Let the precomputed-vector file finish decoding before comparing products.
+    // This avoids treating still-loading vectors as missing and re-embedding those images live.
+    if(productImageFeatures.size===0){
+      photoStatus.textContent='事前解析データを読み込み中です…';
+    }
+    await imageFeaturesReady;
+    const featuresLoaded=productImageFeatures.size;
+    const precomputedCandidateCount=candidates.filter(p=>productImageFeatures.has(p.image)).length;
     // Compare every eligible catalog item so products later in the catalog
     // cannot be silently skipped by a fixed 500-item limit.
     const maxToCheck=candidates.length;
