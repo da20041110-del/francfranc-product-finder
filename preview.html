@@ -89,7 +89,7 @@ footer{padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
 <div class="camera-actions"><button type="button" id="takePhoto">撮影する</button><button type="button" class="secondary" id="closeCamera">戻る</button></div><canvas id="cameraCanvas" hidden></canvas></div>
 
 <button id="search" type="button">この写真から商品を検索</button>
-<div class="status" id="photoStatus" role="status" hidden></div>
+<div class="status" id="photoStatus" role="status">写真を選ぶと、検索の準備状況がここに表示されます。</div>
 
 <details class="card" id="textSearchPanel">
 <summary style="cursor:pointer;font-weight:600;font-size:16px">商品名・品番から探す</summary>
@@ -470,6 +470,7 @@ document.getElementById('takePhoto').addEventListener('click',async()=>{
 if(libraryPick)libraryPick.addEventListener('click',()=>libraryFile.click());
 function handlePhotoFile(f,message){
   if(!f)return;
+  photoStatus.hidden=false;
   selectedPhotoFile=f;
   photo.style.display='none';
   search.disabled=true;
@@ -589,6 +590,7 @@ async function fetchImageBlobUrl(url){
   return URL.createObjectURL(await response.blob());
 }
 search.addEventListener('click',async()=>{
+  photoStatus.hidden=false;
   photoStatus.className='status';
   photoStatus.textContent='検索ボタンを押しました。カタログと検索機能を確認中…';
   if(imageSearchBusy){photoStatus.textContent='すでに検索処理中です。少し待ってください。';return;}
