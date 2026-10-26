@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f7f6f4">
+<title>Francfranc 商品検索 | 管理者チェック</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f7f6f4;color:#302d2b;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",Arial,sans-serif}
+header{background:#fff;border-bottom:1px solid #e8e1dc;padding:20px 16px;text-align:center}header .eyebrow{font-size:11px;letter-spacing:2px;color:#8d7770}h1{font-size:22px;margin:5px 0}header p{font-size:12px;color:#766e69;margin:0}
+main{max-width:760px;margin:0 auto;padding:18px 14px 40px}.notice{padding:12px 14px;background:#fff5e8;border:1px solid #efd6b0;border-radius:12px;font-size:12px;line-height:1.65;margin-bottom:16px}
+.section-title{font-size:15px;margin:22px 2px 10px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{background:#fff;border:1px solid #eee7e2;border-radius:14px;padding:15px;min-width:0}.label{font-size:12px;color:#7c736d}.value{font-size:24px;font-weight:700;margin:7px 0 4px;overflow-wrap:anywhere}.sub{font-size:11px;color:#8b817b;line-height:1.6}.status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600}.dot{width:8px;height:8px;border-radius:50%;background:#b6aaa2;display:inline-block}.ok .dot{background:#25845b}.warn .dot{background:#bd7b22}.bad .dot{background:#b94343}.checks{display:grid;gap:8px}.check{display:flex;align-items:flex-start;gap:10px;padding:12px;background:#fff;border:1px solid #eee7e2;border-radius:12px}.check-icon{width:28px;height:28px;border-radius:9px;background:#f5f1ed;display:flex;align-items:center;justify-content:center;flex-shrink:0}.check strong{font-size:13px;display:block;margin:1px 0 4px}.check p{font-size:12px;color:#766e69;line-height:1.55;margin:0}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}button,a.btn{font:inherit;font-size:13px;font-weight:600;text-decoration:none;text-align:center;border:0;border-radius:11px;padding:14px 10px;background:#333;color:#fff;cursor:pointer;display:block}button.secondary,a.secondary{background:#fff;color:#383330;border:1px solid #ded5cf}.foot{font-size:11px;color:#887f79;line-height:1.7;margin:18px 3px 0}.updated{font-size:12px;color:#776e68;margin-top:10px}
+@media(min-width:600px){main{padding-top:26px}.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.value{font-size:26px}}
+</style>
+</head>
+<body>
+<header><div class="eyebrow">FRANCFRANC PRODUCT FINDER</div><h1>管理者チェック</h1><p>カタログ・画像データ・動作確認</p></header>
+<main>
+<div class="notice"><strong>確認用プロトタイプ</strong><br>この画面は管理項目の検討用です。現在はパスワード認証やサーバー側の保護はありません。実運用の機密情報・設定変更機能はまだ扱いません。</div>
+<div class="section-title">現在のデータ状態</div>
+<div class="grid">
+ <div class="card"><div class="label">カタログ商品数</div><div class="value" id="productCount">確認中…</div><div class="sub" id="catalogDetail">catalog.json</div></div>
+ <div class="card"><div class="label">画像特徴データ</div><div class="value" id="featureCount">確認中…</div><div class="sub" id="featureDetail">image-features.json</div></div>
+ <div class="card"><div class="label">カタログ取得</div><div class="value" id="catalogState">確認中…</div><div class="sub" id="catalogBytes">読み込み状態</div></div>
+ <div class="card"><div class="label">画像データ取得</div><div class="value" id="featureState">確認中…</div><div class="sub" id="featureBytes">読み込み状態</div></div>
+</div>
+<div class="section-title">簡易ヘルスチェック</div>
+<div class="checks">
+ <div class="check"><div class="check-icon">1</div><div><strong>カタログデータを読み込める</strong><p id="checkCatalog">確認しています…</p></div></div>
+ <div class="check"><div class="check-icon">2</div><div><strong>画像比較データを読み込める</strong><p id="checkFeatures">確認しています…</p></div></div>
+ <div class="check"><div class="check-icon">3</div><div><strong>データ同士の整合性</strong><p id="checkConsistency">確認しています…</p></div></div>
+ <div class="check"><div class="check-icon">4</div><div><strong>定期更新の確認</strong><p>この試作画面では更新スケジュールの実行履歴までは取得していません。GitHub Actions の実行履歴を別途確認する必要があります。</p></div></div>
+</div>
+<div class="updated" id="lastChecked">最終チェック：未実施</div>
+<div class="actions"><button id="refresh">もう一度チェック</button><a class="btn secondary" href="./preview.html">スタッフ画面プレビューへ</a></div>
+<p class="foot">注意：このチェックは公開されているJSONファイルをブラウザから読み込む簡易確認です。検索精度そのもの、公式サイトとの最新性、実店舗でのバーコード一致を保証するものではありません。実際の更新日時・失敗通知・アクセス制御は次の段階で実装します。</p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+function setCheck(id,text,kind){const el=$(id);el.textContent=text;el.className='status '+(kind||'');}
+function countItems(data){if(Array.isArray(data))return data.length;if(data&&typeof data==='object'){for(const key of ['products','items','catalog','features','results'])if(Array.isArray(data[key]))return data[key].length;return Object.keys(data).length;}return 0;}
+function bytes(n){if(!Number.isFinite(n))return 'サイズ不明';return n>1024*1024?(n/1024/1024).toFixed(2)+' MB':(n/1024).toFixed(0)+' KB';}
+async function checkFile(url){const response=await fetch(url+'?check='+Date.now(),{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);const text=await response.text();let data;try{data=JSON.parse(text)}catch(e){throw new Error('JSON形式を読み取れません')}return {data,bytes:new Blob([text]).size};}
+async function runChecks(){
+ $('refresh').disabled=true;$('refresh').textContent='確認中…';
+ ['productCount','featureCount','catalogState','featureState'].forEach(id=>$(id).textContent='確認中…');
+ ['checkCatalog','checkFeatures','checkConsistency'].forEach(id=>$(id).textContent='確認しています…');
+ let catalog=null,features=null,cErr=null,fErr=null;
+ try{catalog=await checkFile('./catalog.json');$('catalogState').textContent='OK';$('catalogBytes').textContent=bytes(catalog.bytes);$('productCount').textContent=countItems(catalog.data).toLocaleString();$('catalogDetail').textContent='データ構造を確認';setCheck('checkCatalog','catalog.json を正常に取得できました。','ok');}
+ catch(e){cErr=e;$('catalogState').textContent='NG';$('catalogBytes').textContent=e.message;$('productCount').textContent='—';setCheck('checkCatalog','取得失敗：'+e.message,'bad');}
+ try{features=await checkFile('./image-features.json');$('featureState').textContent='OK';$('featureBytes').textContent=bytes(features.bytes);$('featureCount').textContent=countItems(features.data).toLocaleString();$('featureDetail').textContent='データ構造を確認';setCheck('checkFeatures','image-features.json を正常に取得できました。','ok');}
+ catch(e){fErr=e;$('featureState').textContent='NG';$('featureBytes').textContent=e.message;$('featureCount').textContent='—';setCheck('checkFeatures','取得失敗：'+e.message,'bad');}
+ if(catalog&&features){setCheck('checkConsistency','両方のデータが読み込めました。件数の意味や商品IDの一致は、データ仕様を確認してから追加検証します。','warn');}
+ else setCheck('checkConsistency','片方以上のデータ取得に失敗したため、整合性を確認できません。','bad');
+ $('lastChecked').textContent='最終チェック：'+new Date().toLocaleString('ja-JP');
+ $('refresh').disabled=false;$('refresh').textContent='もう一度チェック';
+}
+$('refresh').addEventListener('click',runChecks);runChecks();
+</script>
+</body></html>
