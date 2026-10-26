@@ -208,8 +208,12 @@ let imageFeaturesMetadata={catalogGeneratedAt:null,generatedAt:null,declaredCoun
 let imageFeaturesReady=fetch('./image-features.json?v=20261025',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(data=>{imageFeaturesMetadata={catalogGeneratedAt:data.catalogGeneratedAt||null,generatedAt:data.generatedAt||null,declaredCount:Object.keys(data.features||{}).length};const entries=Object.entries(data.features||{});for(const [url,encoded] of entries){if(typeof encoded!=='string')continue;const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));productImageFeatures.set(url,Array.from(new Int8Array(bytes.buffer),v=>v/127));}imageFeaturesLoadElapsedMs=performance.now()-imageFeaturesLoadStartedAt;return productImageFeatures.size;}).catch(error=>{imageFeaturesLoadElapsedMs=performance.now()-imageFeaturesLoadStartedAt;imageFeaturesLoadError=error?.message||String(error);console.warn('事前解析データを読み込めませんでした:',error);return 0;});
 function escapeHtml(value=''){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function getSeriesKey(title=''){
-  let s=normalizeJapaneseSearch(title);
+  // Remove color words before kana normalization. normalizeJapaneseSearch converts
+  // katakana colors such as ホワイト and ベージュ to hiragana, which made the
+  // old katakana-only color list fail to match sibling variants.
+  let s=String(title).normalize('NFKC').toLocaleLowerCase('ja');
   s=s.replace(/(ライトピンク|ダークグレー|ライトグレー|アイボリー|ベージュ|ブラック|ホワイト|ピンク|ブルー|グレー|グリーン|イエロー|レッド|オレンジ|パープル|ブラウン|ネイビー|クリア|透明|白|黒|赤|青|緑|黄|茶|桃色)/g,'');
+  s=normalizeJapaneseSearch(s);
   s=s.replace(/(サイズ|size)?(xxs|xxl|xs|xl|ss|s|m|l)(サイズ)?/g,'');
   s=s.replace(/(ミニ|スモール|レギュラー|ラージ|small|medium|large)/g,'');
   return s;
