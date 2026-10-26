@@ -737,8 +737,7 @@ search.addEventListener('click',async()=>{
       catalogResults.appendChild(card);
     }
     const elapsedSeconds=((performance.now()-searchStartedAt)/1000).toFixed(1);
-    const phaseDiagnostics=`内訳：モデル ${(modelLoadMs/1000).toFixed(1)}秒／撮影写真 ${(queryEmbedMs/1000).toFixed(1)}秒／切り抜き ${(cropEmbedMs/1000).toFixed(1)}秒／事前解析待ち ${(featureWaitMs/1000).toFixed(1)}秒／商品比較 ${(compareMs/1000).toFixed(1)}秒／事前解析データ読込 ${(imageFeaturesLoadElapsedMs===null?'計測中':(imageFeaturesLoadElapsedMs/1000).toFixed(1)+'秒')}`;
-    photoStatus.textContent=`検索完了。${phaseDiagnostics}。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒、対象は${candidates.length}件、事前解析済み対象は${precomputedCandidateCount}件、解析済み総数は${featuresLoaded}件（JSON内${imageFeaturesMetadata.declaredCount}件）、カタログ画像${catalogImageCount}件・未対応${catalogImageFeatureMissing}件、解析データのカタログ更新日時${imageFeaturesMetadata.catalogGeneratedAt||'不明'}${featureCatalogDateMismatch?'【カタログ更新日時不一致】':''}です。上位候補から商品を確認してください。`;
+    photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒です。上位候補から商品を確認してください。`;
     catalogResults.style.display='block';
     catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){
