@@ -220,7 +220,7 @@ function getSeriesKey(title=''){
 }
 function renderRelatedVariants(product){
   const key=getSeriesKey(product.title||'');
-  const productCode=String(getProductCode(product)||'').replace(/\\D/g,'');
+  const productCode=String(getProductCode(product)||'').replace(/\D/g,'');
   if(key.length<4 && productCode.length<8)return '';
   // First use normalized shared product-family title. If that misses, use the
   // shared JAN/POS prefix as a conservative fallback for color variants.
@@ -228,7 +228,7 @@ function renderRelatedVariants(product){
   if(!related.length && productCode.length>=11){
     const prefix=productCode.slice(0,11);
     related=catalogProducts.filter(p=>{
-      const code=String(getProductCode(p)||'').replace(/\\D/g,'');
+      const code=String(getProductCode(p)||'').replace(/\D/g,'');
       return p.url!==product.url&&p.image&&code.length===13&&code.slice(0,11)===prefix;
     });
   }
@@ -272,12 +272,12 @@ function renderCatalog(){
     return true;
   }).map(p=>{
     const title=normalizeJapaneseSearch(p.title||'');
-    const code=String(p.itemCode||'').replace(/\\D/g,'');
+    const code=String(p.itemCode||'').replace(/\D/g,'');
     let score=0;
     if(title===q)score=100;
     else if(title.startsWith(q))score=80;
     else if(title.includes(q))score=60;
-    else if(code.includes(raw.replace(/\\D/g,''))&&raw.replace(/\\D/g,''))score=70;
+    else if(code.includes(raw.replace(/\D/g,''))&&raw.replace(/\D/g,''))score=70;
     else {
       // Tolerate minor typos and missing/extra characters for Japanese product names.
       const compact=title;
