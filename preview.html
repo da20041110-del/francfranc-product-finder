@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" sizes="180x180" href="./apple-touch-icon.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=2">
+<title>Francfranc 商品検索</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f7f6f4;color:#333;font-family:Arial,"Noto Sans JP",sans-serif}
+header{background:#fff;padding:20px;text-align:center;border-bottom:1px solid #e5e0dc}\n#clearApp{position:fixed!important;right:18px!important;bottom:calc(22px + env(safe-area-inset-bottom,0px))!important;top:auto!important;left:auto!important;z-index:2147483647!important;width:58px!important;height:58px!important;min-width:58px!important;min-height:58px!important;margin:0!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#333!important;color:#fff!important;border:2px solid #fff!important;border-radius:50%!important;font-size:14px!important;font-weight:700!important;box-shadow:0 3px 12px rgba(0,0,0,.3)!important;appearance:none;-webkit-appearance:none;touch-action:manipulation}
+header h1{font-size:22px;letter-spacing:2px;margin:0}
+header p{font-size:12px;color:#777;margin:7px 0 0}
+main{max-width:520px;margin:auto;padding:20px}
+h2{font-size:18px}
+.note{font-size:13px;color:#666;line-height:1.7}
+.upload{display:block;background:white;border:2px dashed #c9bdb5;border-radius:14px;padding:24px;text-align:center;cursor:pointer}
+.upload strong{display:block;margin-bottom:8px}
+#photo{width:100%;margin-top:16px;border-radius:10px;display:none;max-height:320px;object-fit:contain;background:#eee}
+.camera-guide{display:none;position:fixed;inset:0;z-index:1000;background:#111;color:#fff;padding:16px;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.camera-guide.open{display:flex}
+.camera-stage{position:relative;width:min(100%,520px);height:min(60vh,620px);display:flex;align-items:center;justify-content:center;overflow:hidden;background:#222;border-radius:12px}
+.camera-stage video{width:100%;height:100%;object-fit:contain}
+.camera-frame{position:absolute;width:min(70%,38vh,340px);aspect-ratio:1;border:2px dashed #fff;border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.28);pointer-events:none}
+.camera-guide .camera-help{font-size:14px;line-height:1.6;text-align:center;max-width:520px;margin:0}
+.camera-actions{display:flex;width:min(100%,520px);gap:10px}
+.camera-actions button{flex:1;margin-top:0}
+.camera-actions .secondary{background:#555}
+#catalogResults:empty{display:none}
+#catalogResults:not(:empty){display:block}
+#catalogResults{max-height:55vh;overflow-y:auto;overscroll-behavior:contain;padding-bottom:4px;scrollbar-gutter:stable}
+#catalogQuery{scroll-margin-top:18px;position:relative;z-index:5;background:#fff;box-shadow:0 0 0 5px #fff;scroll-behavior:auto}
+@media(max-width:600px){input[type=text]{font-size:16px}#catalogResults{max-height:50vh}}
+button{width:100%;border:0;border-radius:10px;padding:15px;margin-top:14px;background:#333;color:white;font-size:16px;cursor:pointer}
+button:disabled{opacity:.5}
+.card{background:white;border-radius:14px;padding:18px;margin-top:22px}
+input[type=text]{width:100%;padding:13px;border:1px solid #ccc;border-radius:8px;margin-top:8px;font-size:16px}
+.barcode{display:block;margin:16px auto 6px;width:100%;max-width:340px;height:110px}
+.status{padding:12px;border-radius:8px;background:#f0ede9;font-size:13px;line-height:1.7;margin-top:14px}
+.status.error{background:#fff0ee;color:#9b2d20}
+footer{text-align:center;font-size:11px;color:#888;padding:25px}
+
+/* Staff-facing visual refresh */
+body{background:#faf8f6;color:#292522}
+header{padding:22px 18px 18px;background:#fff}
+header h1{font-size:23px;letter-spacing:2.5px}
+header p{font-size:10px;letter-spacing:2px;color:#8a7b72}
+main{padding:18px 16px 32px}
+main>h2{font-size:21px;margin:8px 0 4px}
+main>p.note{margin-top:0;margin-bottom:18px}
+.upload{border:1px solid #e5dcd5;border-radius:18px;padding:18px;background:#fff;box-shadow:0 3px 14px rgba(66,45,32,.04)}
+.upload strong{font-size:17px;margin-bottom:14px}
+#cameraPick{background:#292522;margin-top:8px}
+#libraryFile{border-color:#e0d5cd!important}
+#photo{background:#fff;border:1px solid #eee2da;padding:8px;max-height:360px}
+#search{background:#b97869;border-radius:13px;font-weight:700;min-height:54px;box-shadow:0 3px 10px rgba(185,120,105,.18)}
+.card{border:1px solid #eee6e0;box-shadow:0 3px 14px rgba(66,45,32,.035);border-radius:16px}
+#textSearchPanel{padding:16px;margin-top:22px;background:#fff}
+#textSearchPanel summary{list-style-position:inside}
+#textSearchPanel[open] summary{margin-bottom:12px}
+#clearApp{background:#292522!important}
+footer{padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
+
+</style>
+</head>
+<body>
+<div style="padding:8px 12px;background:#fff1c9;color:#6b4d00;text-align:center;font-size:12px;border-bottom:1px solid #ead79d">画面デザイン確認用プレビューです。本番画面ではありません。</div>
+<button type="button" id="clearApp" onclick="window.location.reload()" aria-label="写真と検索結果をクリア" title="写真と検索結果をクリア" style="position:fixed!important;right:18px!important;bottom:calc(22px + env(safe-area-inset-bottom,0px))!important;top:auto!important;left:auto!important;z-index:2147483647!important;width:58px!important;height:58px!important;min-width:58px!important;min-height:58px!important;margin:0!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#333!important;color:#fff!important;border:2px solid #fff!important;border-radius:50%!important;font-size:14px!important;font-weight:700!important;box-shadow:0 3px 12px rgba(0,0,0,.3)!important">クリア</button>
+<header>
+<h1>Francfranc</h1>
+<p>PRODUCT FINDER</p>
+</header>
+<main>
+<h2>商品を探す</h2>
+<p class="note">商品の写真を撮影するか、ライブラリから選んでください。</p>
+<div class="upload">
+<strong>📷 商品写真</strong>
+<button type="button" id="cameraPick">写真を撮る</button>
+<div style="margin-top:12px"><label for="libraryFile" style="display:block;margin-bottom:8px;font-weight:600">ライブラリから選ぶ</label><input id="libraryFile" type="file" accept="image/*" aria-label="写真ライブラリから選ぶ" style="display:block;width:100%;min-height:56px;padding:10px;background:#fff;color:#333;border:1px solid #aaa;border-radius:12px;font-size:16px"></div>
+
+</div>
+<input id="file" type="file" accept="image/*" capture="environment" hidden>
+
+<img id="photo" alt="撮影した商品写真">
+<div class="camera-guide" id="cameraGuide" role="dialog" aria-modal="true" aria-label="商品撮影">
+<p class="camera-help"><strong>商品全体を白い枠内に収めてください</strong></p>
+<div class="camera-stage"><video id="cameraVideo" autoplay playsinline muted></video><div class="camera-frame" aria-hidden="true"></div></div>
+<div class="camera-actions"><button type="button" id="takePhoto">撮影する</button><button type="button" class="secondary" id="closeCamera">戻る</button></div><canvas id="cameraCanvas" hidden></canvas></div>
+
+<button id="search" type="button">この写真から商品を検索</button>
+<div class="status" id="photoStatus" role="status" hidden></div>
+
+<details class="card" id="textSearchPanel">
+<summary style="cursor:pointer;font-weight:600;font-size:16px">商品名・品番から探す</summary>
+<p class="note">商品名や品番が分かっている場合はこちらから検索できます。</p>
+<label for="catalogQuery">商品名・品番で検索</label>
+<input id="catalogQuery" type="text" autocomplete="off" placeholder="例：ワイヤーキッチンラック / 1101070063809">
+<details id="categorySettings" style="margin-top:12px">
+  <summary style="cursor:pointer;padding:12px 14px;background:#fff;border:1px solid #ddd;border-radius:10px;font-weight:600">検索カテゴリーを絞り込む（通常は全商品を検索）</summary>
+<section class="card" id="categoryFilter" style="margin-top:8px">
+  <h3 style="margin-top:0">商品カテゴリーを選択</h3>
+  <p class="note">品番の左から3・4桁目で絞り込みます。複数選択できます。不明な場合は「全部選択」を使ってください。</p>
+  <div id="categoryOptions" style="display:flex;flex-wrap:wrap;gap:8px">
+    <label style="display:flex;align-items:center;gap:5px;padding:8px 10px;border:1px solid #ccc;border-radius:8px"><input type="checkbox" class="categoryChoice" value="01"> 01</label>
+    <label style="display:flex;align-items:center;gap:5px;padding:8px 10px;border:1px solid #ccc;border-radius:8px"><input type="checkbox" class="categoryChoice" value="02"> 02</label>
+    <label style="display:flex;align-items:center;gap:5px;padding:8px 10px;border:1px solid #ccc;border-radius:8px"><input type="checkbox" class="categoryChoice" value="03"> 03</label>
+    <label style="display:flex;align-items:center;gap:5px;padding:8px 10px;border:1px solid #ccc;border-radius:8px"><input type="checkbox" class="categoryChoice" value="04"> 04</label>
+    <label style="display:flex;align-items:center;gap:5px;padding:8px 10px;border:1px solid #ccc;border-radius:8px"><input type="checkbox" class="categoryChoice" value="05"> 05</label>
+    <label style="display:flex;align-items:center;gap:5px;padding:8px 10px;border:1px solid #ccc;border-radius:8px"><input type="checkbox" class="categoryChoice" value="06"> 06</label>
+    <label style="display:flex;align-items:center;gap:5px;padding:8px 10px;border:1px solid #ccc;border-radius:8px"><input type="checkbox" class="categoryChoice" value="08"> 08</label>
+    <label style="display:flex;align-items:center;gap:5px;padding:8px 10px;border:1px solid #ccc;border-radius:8px"><input type="checkbox" class="categoryChoice" value="09"> 09</label>
+    <label style="display:flex;align-items:center;gap:5px;padding:8px 10px;border:1px solid #ccc;border-radius:8px"><input type="checkbox" class="categoryChoice" value="11"> 11</label>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <button type="button" id="selectAllCategories" style="background:#fff;color:#333;border:1px solid #aaa">全部選択</button>
+    <button type="button" id="clearCategories" style="background:#fff;color:#333;border:1px solid #aaa">選択解除</button>
+  </div>
+</section>
+</details>
+<div class="status" id="catalogStatus" role="status">カタログを読み込み中です…</div>
+<div id="catalogResults"></div>
+</details>
+
+<section class="card" id="barcodeCard" style="display:none">
+<h2>選択した商品のバーコード</h2>
+<p class="note">選んだ商品の品番を確認してください。バーコードは正しい商品と一致することを確認してからレジで使用してください。</p>
+<label for="jan">品番（13桁）</label>
+<input id="jan" type="text" inputmode="numeric" autocomplete="off" maxlength="13" placeholder="例：4901234567894">
+<div class="status" id="barcodeStatus" role="status">品番を入力すると、チェックデジットを確認してバーコードを表示します。</div>
+<p><a id="officialProductLink" href="#" target="_blank" rel="noopener noreferrer" hidden>公式商品ページを開く（色違いを確認）</a></p>
+<svg class="barcode" id="barcode" viewBox="0 0 320 110" role="img" aria-label="バーコードは未生成です"></svg>
+</section>
+</main>
+<footer>Francfranc 商品検索</footer>
+<script>
+window.addEventListener('error',function(event){
+  const status=document.getElementById('photoStatus');
+  if(status){status.className='status error';status.textContent='アプリ内エラー：'+(event.message||'原因不明')+'（行 '+(event.lineno||'?')+'）';}
+});
+window.addEventListener('unhandledrejection',function(event){
+  const status=document.getElementById('photoStatus');
+  if(status){status.className='status error';status.textContent='検索準備エラー：'+(event.reason?.message||String(event.reason||'原因不明'));}
+});
+const clearAppButton=document.getElementById('clearApp');
+clearAppButton.addEventListener('click',()=>{
+  // Stop any in-progress image comparison and release the selected photo URL.
+  stopImageSearch=true;
+  if(photo.dataset.url){URL.revokeObjectURL(photo.dataset.url);delete photo.dataset.url;}
+  selectedPhotoFile=null;
+  file.value='';
+  libraryFile.value='';
+  photo.removeAttribute('src');
+  photo.style.display='none';
+  document.getElementById('search').disabled=true;
+  photoStatus.className='status';
+  photoStatus.hidden=true;
+  photoStatus.textContent='';
+  catalogQuery.value='';
+  lastCatalogQuery='';
+  catalogVisibleCount=30;
+  catalogResults.innerHTML='';
+  catalogResults.style.display='none';
+  catalogStatus.textContent='商品名・品番を入力すると候補が表示されます。写真から探す場合は、上の「商品を検索する」を使ってください。';
+  document.getElementById('jan').value='';
+  document.getElementById('barcodeCard').style.display='none';
+  document.getElementById('barcode').innerHTML='';
+  document.getElementById('barcodeStatus').textContent='品番を入力すると、チェックデジットを確認してバーコードを表示します。';
+  const officialLink=document.getElementById('officialProductLink');
+  officialLink.href='#';
+  officialLink.hidden=true;
+  document.querySelectorAll('.categoryChoice').forEach(el=>el.checked=false);
+  if(document.getElementById('cameraGuide').classList.contains('open'))closeCamera();
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+const catalogQuery=document.getElementById('catalogQuery');
+const catalogStatus=document.getElementById('catalogStatus');
+const catalogResults=document.getElementById('catalogResults');
+const categoryChoices=[...document.querySelectorAll('.categoryChoice')];
+document.getElementById('selectAllCategories').addEventListener('click',()=>{
+  categoryChoices.forEach(el=>el.checked=true);
+  renderCatalog();
+});
+document.getElementById('clearCategories').addEventListener('click',()=>{
+  categoryChoices.forEach(el=>el.checked=false);
+  renderCatalog();
+});
+// Update text-search results immediately whenever a category checkbox changes.
+categoryChoices.forEach(el=>el.addEventListener('change',renderCatalog));
+function getSelectedCategories(){const selected=categoryChoices.filter(el=>el.checked).map(el=>el.value);return selected.length?selected:categoryChoices.map(el=>el.value);}
+function getProductCode(p){
+  const explicit=String(p?.itemCode||'').replace(/\D/g,'');
+  if(/^\d{13}$/.test(explicit))return explicit;
+  // Use the official product URL's 13-digit slug when the page omits its code.
+  const match=String(p?.url||'').match(/\/products\/(\d{13})(?:[/?#]|$)/);
+  return match?match[1]:explicit;
+}
+function renderProgressCandidates(scored){
+  const top=[...scored].sort((a,b)=>b.score-a.score).slice(0,3);
+  catalogResults.style.display='block';
+  catalogResults.innerHTML='';
+  if(!top.length)return;
+  const note=document.createElement('p');
+  note.className='note';
+  note.textContent='途中経過：現時点で似ている候補です。比較が進むと順位が変わることがあります。良さそうな商品は検索完了前でも選べます。';
+  catalogResults.appendChild(note);
+  for(const item of top){
+    const p=item.product;
+    const card=document.createElement('article');card.className='card';card.style.marginTop='8px';
+    const img=document.createElement('img');img.src=p.image;img.alt=p.title||'商品画像';img.loading='lazy';img.style.cssText='width:100%;max-height:130px;object-fit:contain;background:#f7f6f4;border-radius:8px';
+    img.addEventListener('error',()=>img.style.display='none');
+    const title=document.createElement('strong');title.textContent=p.title||'商品名未取得';
+    const detail=document.createElement('p');detail.textContent='品番：'+(p.itemCode||'未取得')+' / 類似度（参考）：'+(item.score*100).toFixed(1);
+    const choose=document.createElement('button');choose.type='button';choose.className='chooseProduct';choose.textContent='この商品を選ぶ';
+    choose.addEventListener('click',()=>{
+      if(photo.dataset.url)URL.revokeObjectURL(photo.dataset.url);
+      selectedPhotoFile=null;
+      file.value='';libraryFile.value='';
+      stopImageSearch=true;
+      selectProduct(p,card);
+      photoStatus.hidden=false;
+      photoStatus.textContent='商品を選択しました。';
+    });
+    card.append(img,title,detail,choose);catalogResults.appendChild(card);
+  }
+}
+let catalogProducts=[];
+let productImageFeatures=new Map();
+let imageFeaturesLoadError='';
+const imageFeaturesLoadStartedAt=performance.now();
+let imageFeaturesLoadElapsedMs=null;
+let imageFeaturesMetadata={catalogGeneratedAt:null,generatedAt:null,declaredCount:0};
+let imageFeaturesReady=fetch('./image-features.json?v=20261025',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(data=>{imageFeaturesMetadata={catalogGeneratedAt:data.catalogGeneratedAt||null,generatedAt:data.generatedAt||null,declaredCount:Object.keys(data.features||{}).length};const entries=Object.entries(data.features||{});for(const [url,encoded] of entries){if(typeof encoded!=='string')continue;const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));productImageFeatures.set(url,Array.from(new Int8Array(bytes.buffer),v=>v/127));}imageFeaturesLoadElapsedMs=performance.now()-imageFeaturesLoadStartedAt;return productImageFeatures.size;}).catch(error=>{imageFeaturesLoadElapsedMs=performance.now()-imageFeaturesLoadStartedAt;imageFeaturesLoadError=error?.message||String(error);console.warn('事前解析データを読み込めませんでした:',error);return 0;});
+function escapeHtml(value=''){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function getSeriesKey(title=''){
+  // Remove color words before kana normalization. normalizeJapaneseSearch converts
+  // katakana colors such as ホワイト and ベージュ to hiragana, which made the
+  // old katakana-only color list fail to match sibling variants.
+  let s=String(title).normalize('NFKC').toLocaleLowerCase('ja');
+  s=s.replace(/(ライトピンク|ダークグレー|ライトグレー|アイボリー|ベージュ|ブラック|ホワイト|ピンク|ブルー|グレー|グリーン|イエロー|レッド|オレンジ|パープル|ブラウン|ネイビー|クリア|透明|白|黒|赤|青|緑|黄|茶|桃色)/g,'');
+  s=normalizeJapaneseSearch(s);
+  s=s.replace(/(サイズ|size)?(xxs|xxl|xs|xl|ss|s|m|l)(サイズ)?/g,'');
+  s=s.replace(/(ミニ|スモール|レギュラー|ラージ|small|medium|large)/g,'');
+  return s;
+}
+function renderRelatedVariants(product){
+  const key=getSeriesKey(product.title||'');
+  const productCode=String(getProductCode(product)||'').replace(/\D/g,'');
+  if(key.length<4 && productCode.length<8)return '';
+  // First use normalized shared product-family title. If that misses, use the
+  // shared JAN/POS prefix as a conservative fallback for color variants.
+  let related=catalogProducts.filter(p=>p.url!==product.url&&p.image&&getSeriesKey(p.title||'')===key);
+  if(!related.length && productCode.length>=11){
+    const prefix=productCode.slice(0,11);
+    related=catalogProducts.filter(p=>{
+      const code=String(getProductCode(p)||'').replace(/\D/g,'');
+      return p.url!==product.url&&p.image&&code.length===13&&code.slice(0,11)===prefix;
+    });
+  }
+  related=related.slice(0,5);
+  if(!related.length)return '';
+  const cards=related.map(p=>{
+    const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
+    return '<div style="min-width:112px;max-width:132px;flex:1;border:1px solid #e5e1dd;border-radius:8px;padding:8px;background:#fff">'+
+      (p.image?'<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;height:92px;object-fit:contain">':'')+
+      '<div style="font-size:12px;line-height:1.4;font-weight:600;margin:5px 0">'+escapeHtml(p.title||'商品名未取得')+'</div>'+
+      '<div style="font-size:12px">価格：'+escapeHtml(price)+'</div>'+
+      '<a style="font-size:12px;display:inline-block;margin-top:5px" href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式ページ</a></div>';
+  }).join('');
+  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・サイズ違い</strong><p style="font-size:12px;margin:5px 0 8px">商品名が近い掲載商品です。色やサイズは公式ページで確認してください。</p><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div></section>';
+}
+function normalizeJapaneseSearch(value=''){
+  let text=String(value).normalize('NFKC').toLocaleLowerCase('ja').replace(/[\\s　・･‐‑‒–—―ー_/.,、。()（）［］【】「」『』]/g,'');
+  // Normalize katakana to hiragana so either script can find the same product name.
+  return text.replace(/[ァ-ヶ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0x60));
+}
+let catalogVisibleCount=30;
+let lastCatalogQuery='';
+function renderCatalog(){
+  const raw=(catalogQuery.value||'').trim();
+  const q=normalizeJapaneseSearch(raw);
+  if(q!==lastCatalogQuery){catalogVisibleCount=30;lastCatalogQuery=q;}
+  catalogResults.innerHTML='';
+  if(!q){
+    catalogResults.style.display='none';
+    catalogStatus.textContent='商品名・品番を入力すると候補が表示されます。写真から探す場合は、上の「商品を検索する」を使ってください。';
+    return;
+  }
+  catalogResults.style.display='block';
+  const selectedCategories=categoryChoices.filter(el=>el.checked).map(el=>el.value);
+  const matching=catalogProducts.filter(p=>{
+    if(selectedCategories.length){
+      const code=getProductCode(p);
+      const category=code.length>=4?code.slice(2,4):'';
+      if(!selectedCategories.includes(category))return false;
+    }
+    return true;
+  }).map(p=>{
+    const title=normalizeJapaneseSearch(p.title||'');
+    const code=String(p.itemCode||'').replace(/\D/g,'');
+    let score=0;
+    if(title===q)score=100;
+    else if(title.startsWith(q))score=80;
+    else if(title.includes(q))score=60;
+    else if(code.includes(raw.replace(/\D/g,''))&&raw.replace(/\D/g,''))score=70;
+    else {
+      // Tolerate minor typos and missing/extra characters for Japanese product names.
+      const compact=title;
+      if(q.length>=4){
+        for(let i=0;i<q.length-1;i++){
+          if(compact.includes(q.slice(0,i)+q.slice(i+1))){score=25;break;}
+        }
+      }
+    }
+    return {p,score};
+  }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+  if(!matching.length){catalogStatus.textContent='一致する掲載商品が見つかりません。';return;}
+  const found=matching.slice(0,catalogVisibleCount).map(x=>x.p);
+  catalogStatus.textContent=`検索結果 ${matching.length}件中 ${found.length}件を表示中`;
+  for(const p of found){
+    const card=document.createElement('article');
+    card.className='card';
+    card.style.marginTop='12px';
+    const image=p.image?'<img src="'+escapeHtml(p.image)+'" alt="" loading="eager" style="width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4">':'';
+    const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
+    const productCode=getProductCode(p);
+    const code=productCode?escapeHtml(productCode):'品番未取得';
+    card.innerHTML=image+'<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+code+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
+    card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
+    catalogResults.appendChild(card);
+  }
+  if(matching.length>found.length){
+    const moreButton=document.createElement('button');
+    moreButton.type='button';
+    moreButton.textContent=`さらに表示（残り ${matching.length-found.length}件）`;
+    moreButton.addEventListener('click',()=>{
+      catalogVisibleCount+=30;
+      renderCatalog();
+    });
+    catalogResults.appendChild(moreButton);
+  }
+}
+function selectProduct(p,card){
+  const code=getProductCode(p);
+  const barcodeCard=document.getElementById('barcodeCard');
+  barcodeCard.style.display='block';
+  const officialLink=document.getElementById('officialProductLink');
+  if(officialLink){
+    officialLink.href=p.url||'#';
+    officialLink.hidden=!p.url;
+  }
+  if(/^\d{13}$/.test(code)){
+    jan.value=code;
+    jan.dispatchEvent(new Event('input'));
+    barcodeStatus.textContent=validJan(code)
+      ? '選択した商品の品番です。商品と一致することを確認してください。'
+      : '品番は13桁ですが、チェックデジットが一致しません。公式商品ページで確認してください。';
+  }else{
+    jan.value='';
+    jan.dispatchEvent(new Event('input'));
+    barcodeStatus.textContent='この候補から13桁の品番を取得できませんでした。公式商品ページで確認してください。';
+  }
+  if(card){
+    const btn=card.querySelector('.chooseProduct');
+    if(btn)btn.textContent='選択しました';
+  }
+  photoStatus.textContent='商品を選択しました。商品名・価格・品番・バーコードを確認してください。';
+  barcodeCard.scrollIntoView({behavior:'smooth',block:'start'});
+}
+let catalogDataGeneratedAt=null;
+let catalogRenderTimer=null;
+catalogQuery.addEventListener('input',()=>{
+  // Keep the focused search field stable on iOS while the results below it change.
+  const focused=document.activeElement===catalogQuery;
+  const scrollTop=window.scrollY;
+  if(catalogRenderTimer)clearTimeout(catalogRenderTimer);
+  catalogRenderTimer=setTimeout(()=>{
+    renderCatalog();
+    if(focused){
+      requestAnimationFrame(()=>{
+        if(document.activeElement===catalogQuery){
+          window.scrollTo({top:scrollTop,behavior:'auto'});
+        }
+      });
+    }
+  },100);
+});
+let catalogLoadTimer=setTimeout(()=>{if(!catalogProducts.length)catalogStatus.textContent='カタログの読み込みに時間がかかっています。通信を確認して、ページを開き直してください。';},12000);
+fetch('./catalog.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('catalog.json HTTP '+r.status);return r.json();}).then(data=>{
+  catalogProducts=Array.isArray(data.products)?data.products:[];
+  catalogDataGeneratedAt=data.generatedAt||null;
+  const withImage=catalogProducts.filter(p=>p.image).length;
+  const withCode=catalogProducts.filter(p=>/^\\d{13}$/.test(getProductCode(p))).length;
+  catalogStatus.textContent='カタログ取得日時：'+(data.generatedAt||'不明')+' / 取得URL '+(data.attempted??'?')+'件、商品データ '+catalogProducts.length+'件（画像 '+withImage+'件・13桁品番 '+withCode+'件）';
+  renderCatalog();
+}).catch(err=>{catalogStatus.textContent='カタログを読み込めませんでした（'+(err?.message||'通信エラー')+'）。通信を確認してページを開き直してください。';}).finally(()=>clearTimeout(catalogLoadTimer));
+
+const file=document.getElementById('file');
+const libraryFile=document.getElementById('libraryFile');
+const cameraPick=document.getElementById('cameraPick');
+const libraryPick=document.getElementById('libraryPick');
+const photo=document.getElementById('photo');
+const search=document.getElementById('search');
+const photoStatus=document.getElementById('photoStatus');
+let selectedPhotoFile=null;
+let cameraStream=null;
+const cameraGuide=document.getElementById('cameraGuide');
+const cameraVideo=document.getElementById('cameraVideo');
+const cameraCanvas=document.getElementById('cameraCanvas');
+async function stopCamera(){
+  if(cameraStream){cameraStream.getTracks().forEach(track=>track.stop());cameraStream=null;}
+  cameraVideo.srcObject=null;
+  cameraGuide.classList.remove('open');document.getElementById('clearApp').style.display='flex';
+}
+cameraPick.addEventListener('click',async()=>{
+  if(!navigator.mediaDevices?.getUserMedia){file.click();return;}
+  try{
+    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+    cameraVideo.srcObject=cameraStream;
+    cameraGuide.classList.add('open');document.getElementById('clearApp').style.display='none';
+    await cameraVideo.play();
+  }catch(error){
+    await stopCamera();
+    photoStatus.textContent='カメラを起動できませんでした。カメラの使用を許可するか、写真ライブラリから選んでください。';
+    file.click();
+  }
+});
+libraryFile.addEventListener('change',()=>{if(libraryFile.files&&libraryFile.files.length){handlePhotoChange(libraryFile);}else{photoStatus.className='status';photoStatus.textContent='写真が選択されませんでした。もう一度お試しください。';}});
+document.getElementById('closeCamera').addEventListener('click',stopCamera);
+function syncCameraFrame(){
+  const vw=cameraVideo.videoWidth,vh=cameraVideo.videoHeight;
+  const stage=document.querySelector('.camera-stage');
+  const frame=document.querySelector('.camera-frame');
+  if(!vw||!vh||!stage||!frame)return;
+  const sw=stage.clientWidth,sh=stage.clientHeight;
+  const scale=Math.min(sw/vw,sh/vh);
+  const renderedW=vw*scale,renderedH=vh*scale;
+  const side=Math.max(120,Math.min(renderedW*0.88,renderedH*0.72));
+  frame.style.width=side+'px';
+}
+cameraVideo.addEventListener('loadedmetadata',syncCameraFrame);
+window.addEventListener('resize',syncCameraFrame);
+document.getElementById('takePhoto').addEventListener('click',async()=>{
+  const vw=cameraVideo.videoWidth,vh=cameraVideo.videoHeight;
+  if(!vw||!vh){photoStatus.textContent='カメラ映像を準備中です。少し待ってから撮影してください。';return;}
+  const stage=document.querySelector('.camera-stage');
+  const frame=document.querySelector('.camera-frame');
+  const stageRect=stage.getBoundingClientRect();
+  const frameRect=frame.getBoundingClientRect();
+  const scale=Math.min(stageRect.width/vw,stageRect.height/vh);
+  const renderedW=vw*scale,renderedH=vh*scale;
+  const offsetX=(stageRect.width-renderedW)/2;
+  const offsetY=(stageRect.height-renderedH)/2;
+  const left=(frameRect.left-stageRect.left-offsetX)/scale;
+  const top=(frameRect.top-stageRect.top-offsetY)/scale;
+  const width=frameRect.width/scale,height=frameRect.height/scale;
+  const sx=Math.max(0,Math.round(left)),sy=Math.max(0,Math.round(top));
+  const sw=Math.max(1,Math.min(vw-sx,Math.round(width)));
+  const sh=Math.max(1,Math.min(vh-sy,Math.round(height)));
+  cameraCanvas.width=sw;cameraCanvas.height=sh;
+  const ctx=cameraCanvas.getContext('2d');
+  if(!ctx){photoStatus.textContent='撮影画像を作成できませんでした。';return;}
+  ctx.drawImage(cameraVideo,sx,sy,sw,sh,0,0,sw,sh);
+  const blob=await new Promise(resolve=>cameraCanvas.toBlob(resolve,'image/jpeg',0.92));
+  if(!blob){photoStatus.textContent='撮影画像を作成できませんでした。';return;}
+  const capturedFile=new File([blob],'product-photo.jpg',{type:'image/jpeg',lastModified:Date.now()});
+  await stopCamera();
+  handlePhotoFile(capturedFile,'画面の枠に合わせて切り抜きました。商品全体が写っているか確認してから検索してください。');
+});
+if(libraryPick)libraryPick.addEventListener('click',()=>libraryFile.click());
+function handlePhotoFile(f,message){
+  if(!f)return;
+  selectedPhotoFile=f;
+  photo.style.display='none';
+  search.disabled=true;
+  photoStatus.className='status';
+  photoStatus.textContent='写真を読み込み中です… ('+(f.type||'形式不明')+')';
+  if(photo.dataset.url)URL.revokeObjectURL(photo.dataset.url);
+  const url=URL.createObjectURL(f);
+  photo.dataset.url=url;
+  photo.onload=()=>{
+    photo.style.display='block';
+    search.disabled=false;
+    photoStatus.className='status';
+    photoStatus.textContent=message||'写真を読み込みました。「商品を検索する」を押すと、公式掲載商品の画像と比較します。';
+  };
+  photo.onerror=()=>{
+    photo.style.display='none';
+    search.disabled=true;
+    photoStatus.className='status error';
+    photoStatus.textContent='この写真形式 ('+(f.type||'形式不明')+') を表示できませんでした。iPhoneの写真設定で「互換性優先」にして撮影した写真、またはスクリーンショットを選んでください。';
+  };
+  photo.src=url;
+}
+function handlePhotoChange(input){
+  const f=input.files&&input.files[0];
+  if(!f){
+    photoStatus.className='status';
+    photoStatus.textContent='写真が選択されませんでした。もう一度お試しください。';
+    return;
+  }
+  handlePhotoFile(f,'写真を読み込みました。「商品を検索する」を押すと、公式掲載商品の画像と比較します。');
+}
+file.addEventListener('change',()=>handlePhotoChange(file));
+libraryFile.addEventListener('change',()=>handlePhotoChange(libraryFile));
+
+let imageSearchBusy=false;
+let stopImageSearch=false;
+let imageExtractorPromise=null;
+const productEmbeddingCache=new Map();
+async function getImageExtractor(){
+  if(!imageExtractorPromise){
+    imageExtractorPromise=(async()=>{
+      photoStatus.textContent='画像検索モデルを読み込み中です。初回はモデルのダウンロードに時間がかかります…';
+      const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+      env.allowLocalModels=false;
+      env.useBrowserCache=true;
+      return await pipeline('image-feature-extraction','Xenova/clip-vit-base-patch32');
+    })().catch(error=>{imageExtractorPromise=null;throw error;});
+  }
+  return imageExtractorPromise;
+}
+function vectorFromTensor(output){
+  const data=output?.data;
+  if(!data||!data.length)throw new Error('画像の特徴量を取得できませんでした。');
+  let sum=0;
+  for(let i=0;i<data.length;i++)sum+=data[i]*data[i];
+  const norm=Math.sqrt(sum)||1;
+  return Array.from(data,v=>v/norm);
+}
+async function embedImage(extractor,source){
+  const result=await extractor(source);
+  return vectorFromTensor(result);
+}
+// Build several overlapping square views. The full image is still scored,
+// while crops can focus on an item away from the photo center.
+async function createCropDataUrls(file){
+  let bitmap;
+  try{
+    if(typeof createImageBitmap==='function'){
+      bitmap=await createImageBitmap(file);
+    }else{
+      bitmap=await new Promise((resolve,reject)=>{
+        const image=new Image();
+        const url=URL.createObjectURL(file);
+        image.onload=()=>{URL.revokeObjectURL(url);resolve(image);};
+        image.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('写真を切り抜けませんでした'));};
+        image.src=url;
+      });
+    }
+    const width=bitmap.width||bitmap.naturalWidth;
+    const height=bitmap.height||bitmap.naturalHeight;
+    const side=Math.max(1,Math.round(Math.min(width,height)*0.62));
+    const maxX=Math.max(0,width-side), maxY=Math.max(0,height-side);
+    const positions=[
+      [Math.round(maxX/2),Math.round(maxY/2)],
+      [0,0],[maxX,0],[0,maxY],[maxX,maxY]
+    ];
+    const results=[];
+    for(const [sx,sy] of positions){
+      const canvas=document.createElement('canvas');
+      canvas.width=canvas.height=side;
+      const context=canvas.getContext('2d');
+      if(!context)continue;
+      context.drawImage(bitmap,sx,sy,side,side,0,0,side,side);
+      results.push(canvas.toDataURL('image/jpeg',0.88));
+    }
+    return results;
+  }finally{
+    if(bitmap&&typeof bitmap.close==='function')bitmap.close();
+  }
+}
+function cosine(a,b){
+  let score=0;
+  const n=Math.min(a.length,b.length);
+  for(let i=0;i<n;i++)score+=a[i]*b[i];
+  return score;
+}
+function thumbnailUrl(url){
+  try{
+    const u=new URL(url);
+    u.pathname=u.pathname.replace(/_(?:2000x|1600x|1200x|800x|600x)(?=\.)/i,'_400x');
+    return u.href;
+  }catch{return url;}
+}
+async function fetchImageBlobUrl(url){
+  const response=await fetch(thumbnailUrl(url),{mode:'cors'});
+  if(!response.ok)throw new Error('商品画像を取得できませんでした');
+  return URL.createObjectURL(await response.blob());
+}
+search.addEventListener('click',async()=>{
+  photoStatus.className='status';
+  photoStatus.textContent='検索ボタンを押しました。カタログと検索機能を確認中…';
+  if(imageSearchBusy){photoStatus.textContent='すでに検索処理中です。少し待ってください。';return;}
+  const photoFile=selectedPhotoFile;
+  if(!photoFile){photoStatus.textContent='先に商品写真を選んでください。';return;}
+  if(!catalogProducts.length){photoStatus.className='status error';photoStatus.textContent='商品カタログが読み込まれていません。少し待ってから再読み込みしてください。';return;}
+  imageSearchBusy=true;stopImageSearch=false;search.disabled=true;
+  // Start model loading and query-photo analysis while the precomputed catalog vectors finish loading.
+  photoStatus.textContent='検索候補を準備中です…';
+  photoStatus.textContent='検索候補を準備中です…（カタログ '+catalogProducts.length+'件）';
+  let selectedCategories=[];
+  let candidates=[];
+  try{
+    selectedCategories=getSelectedCategories();
+    candidates=catalogProducts.filter(p=>{
+      if(!p.image||!p.title)return false;
+      if(!selectedCategories.length)return true;
+      const code=getProductCode(p);
+      return code.length>=4&&selectedCategories.includes(code.slice(2,4));
+    });
+  }catch(prepError){
+    photoStatus.className='status error';
+    photoStatus.textContent='検索候補の準備でエラー：'+(prepError?.message||String(prepError));
+    imageSearchBusy=false;search.disabled=false;return;
+  }
+  photoStatus.textContent='検索候補 '+candidates.length+'件を確認しました。画像解析を準備中…';
+  /* candidates already prepared above */
+  if(!candidates.length){photoStatus.textContent='選択したカテゴリーに、比較できる商品画像がありません。カテゴリーを増やして再検索してください。';return;}
+  const searchStartedAt=performance.now();
+  let modelLoadMs=0,queryEmbedMs=0,cropEmbedMs=0,featureWaitMs=0,compareMs=0;
+  const photoUrl=URL.createObjectURL(photoFile);
+  const scored=[];
+  try{
+    let phaseStartedAt=performance.now();
+    const extractor=await getImageExtractor();
+    modelLoadMs=performance.now()-phaseStartedAt;
+    photoStatus.textContent='撮影写真を解析中…';
+    phaseStartedAt=performance.now();
+    const queryVector=await embedImage(extractor,photoUrl);
+    queryEmbedMs=performance.now()-phaseStartedAt;
+    let cropQueryVectors=[];
+    try{
+      phaseStartedAt=performance.now();
+      const croppedPhotos=await createCropDataUrls(photoFile);
+      for(const croppedPhoto of croppedPhotos){
+        try{cropQueryVectors.push(await embedImage(extractor,croppedPhoto));}
+        catch(cropError){console.warn('切り抜き画像を解析できませんでした。',cropError);}
+      }
+      cropEmbedMs=performance.now()-phaseStartedAt;
+    }catch(cropError){
+      cropEmbedMs=performance.now()-phaseStartedAt;
+      console.warn('切り抜き検索を利用できませんでした。元の写真で続行します。',cropError);
+    }
+    // Let the precomputed-vector file finish decoding before comparing products.
+    // This avoids treating still-loading vectors as missing and re-embedding those images live.
+    if(productImageFeatures.size===0){
+      photoStatus.textContent='事前解析データを読み込み中です…';
+    }
+    phaseStartedAt=performance.now();
+    await imageFeaturesReady;
+    featureWaitMs=performance.now()-phaseStartedAt;
+    const featuresLoaded=productImageFeatures.size;
+    const precomputedCandidateCount=candidates.filter(p=>productImageFeatures.has(p.image)).length;
+    const catalogImageCount=catalogProducts.filter(p=>p.image).length;
+    const catalogImageFeatureMissing=catalogProducts.filter(p=>p.image&&!productImageFeatures.has(p.image)).length;
+    const featureCatalogDateMismatch=Boolean(imageFeaturesMetadata.catalogGeneratedAt&&catalogDataGeneratedAt&&imageFeaturesMetadata.catalogGeneratedAt!==catalogDataGeneratedAt);
+    if(imageFeaturesLoadError){
+      photoStatus.textContent='事前解析データの読み込みに失敗しました（'+imageFeaturesLoadError+'）。未解析画像は検索中に処理するため、通常より時間がかかる場合があります。';
+    }
+    // Compare every eligible catalog item so products later in the catalog
+    // cannot be silently skipped by a fixed 500-item limit.
+    const maxToCheck=candidates.length;
+    let cachedCount=0;
+    let completedCount=0;
+    let failedImageCount=0;
+    let nextCandidateIndex=0;
+    // Two workers overlap network image downloads with model inference while
+    // keeping phone memory and CPU pressure modest.
+    const workerCount=Math.min(2,maxToCheck);
+    async function compareWorker(){
+      while(!stopImageSearch){
+        const i=nextCandidateIndex++;
+        if(i>=maxToCheck)return;
+        const p=candidates[i];
+        try{
+          let vector=productImageFeatures.get(p.image)||productEmbeddingCache.get(p.image);
+          if(vector){cachedCount++;}
+          else{
+            let productUrl='';
+            try{
+              productUrl=await fetchImageBlobUrl(p.image);
+              if(stopImageSearch)return;
+              vector=await embedImage(extractor,productUrl);
+              if(stopImageSearch)return;
+              productEmbeddingCache.set(p.image,vector);
+            }finally{
+              if(productUrl)URL.revokeObjectURL(productUrl);
+            }
+          }
+          if(!stopImageSearch){
+            const originalScore=cosine(queryVector,vector);
+            const cropScores=cropQueryVectors.map(qv=>cosine(qv,vector)).sort((a,b)=>b-a);
+            const bestCropScore=cropScores.length?cropScores[0]:originalScore;
+            const secondCropScore=cropScores.length>1?cropScores[1]:bestCropScore;
+            // Keep full-scene context while rewarding products supported by multiple crops.
+            // A single accidental crop match is deliberately not enough to dominate the rank.
+            const blendedScore=cropScores.length
+              ? originalScore*0.30+bestCropScore*0.50+secondCropScore*0.20
+              : originalScore;
+            scored.push({product:p,score:blendedScore});
+          }
+        }catch(e){
+          failedImageCount++;
+          if(!stopImageSearch)console.warn('商品画像を比較できませんでした:',p.url,e);
+        }finally{
+          completedCount++;
+          if(!stopImageSearch){
+            photoStatus.textContent=`公式画像を比較中… ${completedCount}/${maxToCheck}件（対象 ${candidates.length}件・事前解析済み対象 ${precomputedCandidateCount}件・再利用 ${cachedCount}件・失敗 ${failedImageCount}件）`;
+            if(completedCount%25===0&&scored.length)renderProgressCandidates(scored);
+          }
+        }
+      }
+    }
+    phaseStartedAt=performance.now();
+    await Promise.all(Array.from({length:workerCount},()=>compareWorker()));
+    compareMs=performance.now()-phaseStartedAt;
+    if(stopImageSearch)return;
+    scored.sort((a,b)=>b.score-a.score);
+    catalogResults.style.display='block';
+    catalogResults.innerHTML='';
+    let top=scored.slice(0,10);
+    let usedFallback=false;
+    if(!top.length){
+      // If the official image host blocks browser-side comparison, still show usable product cards instead of a blank result.
+      top=candidates.slice(0,5).map(product=>({product,score:null}));
+      usedFallback=true;
+    }
+    catalogStatus.textContent=usedFallback
+      ? '画像の自動比較ができなかったため、掲載商品の参考候補を表示しています。類似度順ではありません。'
+      : '写真検索の候補（類似度順）。必ず商品を確認してください。';
+    const searchDiagnostics=document.createElement('p');
+    searchDiagnostics.className='note';
+    searchDiagnostics.textContent='比較対象 '+maxToCheck+'件／比較成功 '+scored.length+'件／画像取得・比較失敗 '+failedImageCount+'件／再利用 '+cachedCount+'件';
+    catalogResults.appendChild(searchDiagnostics);
+    for(const item of top){
+      const p=item.product;
+      const card=document.createElement('article');card.className='card';card.style.marginTop='12px';
+      const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
+      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>'+renderRelatedVariants(p);
+      const productImage=document.createElement('img');
+      productImage.src=p.image;
+      productImage.alt=p.title||'商品画像';
+      productImage.loading='eager';
+      productImage.style.cssText='display:block;width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4';
+      productImage.addEventListener('error',()=>{
+        productImage.style.display='none';
+        const imageNotice=document.createElement('div');
+        imageNotice.textContent='商品画像を読み込めませんでした。公式商品ページで画像を確認してください。';
+        imageNotice.style.cssText='padding:18px;background:#f0ede9;border-radius:8px;font-size:13px;line-height:1.6;margin-bottom:12px';
+        const imageLink=document.createElement('a');
+        imageLink.href=p.url||'#';
+        imageLink.target='_blank';
+        imageLink.rel='noopener noreferrer';
+        imageLink.textContent='公式商品ページで画像を見る';
+        imageLink.style.cssText='display:block;margin-top:8px';
+        imageNotice.appendChild(imageLink);
+        if(!card.querySelector('.imageLoadNotice')){imageNotice.className='imageLoadNotice';card.prepend(imageNotice);}
+      });
+      card.prepend(productImage);
+      card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
+      catalogResults.appendChild(card);
+    }
+    const elapsedSeconds=((performance.now()-searchStartedAt)/1000).toFixed(1);
+    photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒です。上位候補から商品を確認してください。`;
+    catalogResults.style.display='block';
+    catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(error){
+    console.error(error);
+    // Always show usable catalog candidates when AI comparison fails, so the user is not left with an empty result area.
+    catalogResults.style.display='block';
+    catalogResults.innerHTML='';
+    const fallback=candidates.slice(0,10);
+    catalogStatus.textContent='写真の自動比較に失敗したため、参考商品を表示しています。以下は類似度順ではありません。';
+    for(const p of fallback){
+      const card=document.createElement('article');
+      card.className='card';
+      card.style.marginTop='12px';
+      const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
+      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
+      if(p.image){
+        const img=document.createElement('img');
+        img.src=p.image;img.alt=p.title||'商品画像';img.loading='eager';
+        img.style.cssText='display:block;width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4';
+        img.addEventListener('error',()=>{img.style.display='none';});
+        card.prepend(img);
+      }
+      card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
+      catalogResults.appendChild(card);
+    }
+    photoStatus.textContent='写真の自動比較でエラーが発生しました。参考候補を表示しています。エラー：'+(error?.message||'画像モデルまたは公式画像にアクセスできませんでした。');
+    catalogResults.style.display='block';
+    catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
+  }finally{
+    URL.revokeObjectURL(photoUrl);
+    imageSearchBusy=false;search.disabled=false;
+  }
+});
+const jan=document.getElementById('jan');
+const svg=document.getElementById('barcode');
+const barcodeStatus=document.getElementById('barcodeStatus');
+const L=['0001101','0011001','0010011','0111101','0100011','0110001','0101111','0111011','0110111','0001011'];
+const G=['0100111','0110011','0011011','0100001','0011101','0111001','0000101','0010001','0001001','0010111'];
+const R=['1110010','1100110','1101100','1000010','1011100','1001110','1010000','1000100','1001000','1110100'];
+const PARITY=['LLLLLL','LLGLGG','LLGGLG','LLGGGL','LGLLGG','LGGLLG','LGGGLL','LGLGLG','LGLGGL','LGGLGL'];
+function validJan(s){
+  if(!/^\d{13}$/.test(s))return false;
+  let sum=0;
+  for(let i=0;i<12;i++)sum+=Number(s[i])*(i%2===0?1:3);
+  return (10-sum%10)%10===Number(s[12]);
+}
+function drawBarcode(s){
+  const digits=[...s].map(Number), parity=PARITY[digits[0]];
+  let bits='101';
+  for(let i=1;i<=6;i++)bits+=(parity[i-1]==='L'?L[digits[i]]:G[digits[i]]);
+  bits+='01010';
+  for(let i=7;i<=12;i++)bits+=R[digits[i]];
+  bits+='101';
+  const x0=20, module=2.15, top=10, h=70, guardH=80;
+  let out='';
+  for(let i=0;i<bits.length;i++){
+    if(bits[i]==='1'){
+      const guard=(i<3)||(i>=45&&i<50)||(i>=92);
+      out+=`<rect x="${x0+i*module}" y="${top}" width="${module}" height="${guard?guardH:h}" fill="#111"/>`;
+    }
+  }
+  out+=`<text x="10" y="103" font-size="12" fill="#111">${s[0]}</text>`;
+  for(let i=1;i<=6;i++)out+=`<text x="${x0+(3+(i-1)*7+3.5)*module}" y="96" text-anchor="middle" font-size="12" fill="#111">${s[i]}</text>`;
+  for(let i=7;i<=12;i++)out+=`<text x="${x0+(50+(i-7)*7+3.5)*module}" y="96" text-anchor="middle" font-size="12" fill="#111">${s[i]}</text>`;
+  svg.innerHTML=out;
+  svg.setAttribute('aria-label','EAN-13バーコード '+s);
+}
+jan.addEventListener('input',()=>{
+  const s=jan.value.replace(/\D/g,'').slice(0,13);
+  if(jan.value!==s)jan.value=s;
+  svg.innerHTML='';
+  if(!s){barcodeStatus.className='status';barcodeStatus.textContent='品番を入力すると、チェックデジットを確認してバーコードを表示します。';svg.setAttribute('aria-label','バーコードは未生成です');return;}
+  if(s.length!==13){barcodeStatus.className='status error';barcodeStatus.textContent='13桁入力してください（現在 '+s.length+' 桁）。';return;}
+  if(!validJan(s)){barcodeStatus.className='status error';barcodeStatus.textContent='チェックデジットが一致しません。品番を公式商品ページで再確認してください。';return;}
+  drawBarcode(s);
+  barcodeStatus.className='status';barcodeStatus.textContent='形式チェックOK。これは入力した数字から生成したバーコードです。実際の商品と一致することを確認してから使用してください。';
+});
+</script>
+</body>
+</html>
