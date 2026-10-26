@@ -792,7 +792,7 @@ search.addEventListener('click',async()=>{
     const elapsedSeconds=((performance.now()-searchStartedAt)/1000).toFixed(1);
     photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒です。上位候補から商品を確認してください。`;
     catalogResults.style.display='block';
-    catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
+    catalogResults.querySelector('.chooseProduct')?.scrollIntoView({behavior:'smooth',block:'center'});
   }catch(error){
     console.error(error);
     // Always show usable catalog candidates when AI comparison fails, so the user is not left with an empty result area.
