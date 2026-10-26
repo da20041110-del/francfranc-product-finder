@@ -483,6 +483,10 @@ function handlePhotoFile(f,message){
   photo.onload=()=>{
     photo.style.display='block';
     search.disabled=false;
+    requestAnimationFrame(()=>{
+      const photoBlock=photo.closest('.card')||photo.parentElement;
+      (photoBlock||search).scrollIntoView({behavior:'smooth',block:'center'});
+    });
     photoStatus.className='status';
     photoStatus.textContent=message||'写真を読み込みました。「商品を検索する」を押すと、公式掲載商品の画像と比較します。';
   };
