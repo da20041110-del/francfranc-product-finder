@@ -211,7 +211,7 @@ function renderProgressCandidates(scored){
     img.addEventListener('error',()=>img.style.display='none');
     const title=document.createElement('strong');title.textContent=p.title||'商品名未取得';
     const detail=document.createElement('p');detail.textContent='品番：'+(p.itemCode||'未取得')+' / 類似度（参考）：'+(item.score*100).toFixed(1);
-    const choose=document.createElement('button');choose.type='button';choose.className='chooseProduct';choose.textContent='この商品を選ぶ';
+    const choose=document.createElement('button');choose.type='button';choose.className='chooseProduct';choose.textContent='バーコードを表示';
     choose.addEventListener('click',()=>{
       if(photo.dataset.url)URL.revokeObjectURL(photo.dataset.url);
       selectedPhotoFile=null;
@@ -219,7 +219,7 @@ function renderProgressCandidates(scored){
       stopImageSearch=true;
       selectProduct(p,card);
       photoStatus.hidden=false;
-      photoStatus.textContent='商品を選択しました。';
+      photoStatus.textContent='商品をバーコード表示済み。';
     });
     card.append(img,title,detail,choose);catalogResults.appendChild(card);
   }
@@ -325,7 +325,7 @@ function renderCatalog(){
     const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
     const productCode=getProductCode(p);
     const code=productCode?escapeHtml(productCode):'品番未取得';
-    card.innerHTML=image+'<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+code+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
+    card.innerHTML=image+'<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+code+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>';
     card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
     catalogResults.appendChild(card);
   }
@@ -362,9 +362,9 @@ function selectProduct(p,card){
   }
   if(card){
     const btn=card.querySelector('.chooseProduct');
-    if(btn)btn.textContent='選択しました';
+    if(btn)btn.textContent='バーコード表示済み';
   }
-  photoStatus.textContent='商品を選択しました。商品名・価格・品番・バーコードを確認してください。';
+  photoStatus.textContent='商品をバーコード表示済み。商品名・価格・品番・バーコードを確認してください。';
   barcodeCard.scrollIntoView({behavior:'smooth',block:'start'});
 }
 let catalogDataGeneratedAt=null;
@@ -739,7 +739,7 @@ search.addEventListener('click',async()=>{
       const p=item.product;
       const card=document.createElement('article');card.className='card';card.style.marginTop='12px';
       const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
-      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>'+renderRelatedVariants(p);
+      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>'+renderRelatedVariants(p);
       const productImage=document.createElement('img');
       productImage.src=p.image;
       productImage.alt=p.title||'商品画像';
@@ -779,7 +779,7 @@ search.addEventListener('click',async()=>{
       card.className='card';
       card.style.marginTop='12px';
       const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
-      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
+      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>';
       if(p.image){
         const img=document.createElement('img');
         img.src=p.image;img.alt=p.title||'商品画像';img.loading='eager';
