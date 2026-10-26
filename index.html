@@ -220,8 +220,19 @@ function getSeriesKey(title=''){
 }
 function renderRelatedVariants(product){
   const key=getSeriesKey(product.title||'');
-  if(key.length<4)return '';
-  const related=catalogProducts.filter(p=>p.url!==product.url&&p.image&&getSeriesKey(p.title||'')===key).slice(0,5);
+  const productCode=String(getProductCode(product)||'').replace(/\\D/g,'');
+  if(key.length<4 && productCode.length<8)return '';
+  // First use normalized shared product-family title. If that misses, use the
+  // shared JAN/POS prefix as a conservative fallback for color variants.
+  let related=catalogProducts.filter(p=>p.url!==product.url&&p.image&&getSeriesKey(p.title||'')===key);
+  if(!related.length && productCode.length>=11){
+    const prefix=productCode.slice(0,11);
+    related=catalogProducts.filter(p=>{
+      const code=String(getProductCode(p)||'').replace(/\\D/g,'');
+      return p.url!==product.url&&p.image&&code.length===13&&code.slice(0,11)===prefix;
+    });
+  }
+  related=related.slice(0,5);
   if(!related.length)return '';
   const cards=related.map(p=>{
     const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
