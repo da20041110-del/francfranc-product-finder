@@ -29,9 +29,9 @@ h2{font-size:18px}
 .camera-actions .secondary{background:#555}
 #catalogResults:empty{display:none}
 #catalogResults:not(:empty){display:block}
-#catalogResults{max-height:55vh;overflow-y:auto;overscroll-behavior:contain;padding-bottom:4px;scrollbar-gutter:stable}
+#catalogResults{max-height:none;overflow:visible;overscroll-behavior:auto;padding-bottom:12px;scrollbar-gutter:auto}
 #catalogQuery{scroll-margin-top:18px;position:relative;z-index:5;background:#fff;box-shadow:0 0 0 5px #fff;scroll-behavior:auto}
-@media(max-width:600px){input[type=text]{font-size:16px}#catalogResults{max-height:50vh}}
+@media(max-width:600px){input[type=text]{font-size:16px}#catalogResults{max-height:none;overflow:visible}}
 button{width:100%;border:0;border-radius:10px;padding:15px;margin-top:14px;background:#333;color:white;font-size:16px;cursor:pointer}
 button:disabled{opacity:.5}
 .card{background:white;border-radius:14px;padding:18px;margin-top:22px}
