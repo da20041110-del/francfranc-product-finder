@@ -31,6 +31,18 @@ main{max-width:760px;margin:0 auto;padding:18px 14px 40px}.notice{padding:12px 1
  <div class="card"><div class="label">確認候補数</div><div class="value" id="catalogWarnings">—</div><div class="sub" id="catalogWarningsDetail">欠損・重複の合計目安</div></div>
  <div class="card"><div class="label">画像特徴データ一致率</div><div class="value" id="featureCoverage">—</div><div class="sub" id="featureCoverageDetail">カタログと特徴データの対応</div></div>
 </div>
+<div class="section-title">更新履歴・更新状況</div>
+<div class="grid">
+ <div class="card"><div class="label">カタログ生成日時</div><div class="value" id="updateCatalogAt" style="font-size:16px">確認中…</div><div class="sub">catalog.json 内の生成日時</div></div>
+ <div class="card"><div class="label">画像データ生成日時</div><div class="value" id="updateFeaturesAt" style="font-size:16px">確認中…</div><div class="sub">image-features.json 内の生成日時</div></div>
+ <div class="card"><div class="label">データ更新の一致</div><div class="value" id="updateSyncState" style="font-size:16px">確認中…</div><div class="sub" id="updateSyncDetail">生成日時と件数の整合性</div></div>
+ <div class="card"><div class="label">自動更新履歴</div><div class="value" style="font-size:16px">別途確認</div><div class="sub">この画面からGitHub Actionsの実行履歴はまだ直接取得していません。</div></div>
+</div>
+<div class="section-title">検索動作テスト</div>
+<div class="checks">
+ <div class="check"><div class="check-icon">5</div><div><strong>画像検索の動作確認</strong><p id="searchTestStatus">この画面では実際の写真検索は実行していません。スタッフ画面で既知の商品写真を使った確認が必要です。</p></div></div>
+ <div class="check"><div class="check-icon">6</div><div><strong>バーコード表示の動作確認</strong><p>JANの形式・チェックデジット確認は下のデータ品質チェックで行います。実際のレジ読取テストは別途必要です。</p></div></div>
+</div>
 <div class="section-title">簡易ヘルスチェック</div>
 <div class="checks">
  <div class="check"><div class="check-icon">1</div><div><strong>カタログデータを読み込める</strong><p id="checkCatalog">確認しています…</p></div></div>
@@ -87,6 +99,20 @@ async function runChecks(){
   setValue('featureCoverageDetail','カタログ画像URLのうち特徴データにも存在');
   setCheck('checkConsistency','画像URL '+catalogUrls.size+'種類のうち特徴データと一致 '+matched+'種類。割合は一致状況の目安で、検索精度そのものを保証しません。',matched===catalogUrls.size&&catalogUrls.size?'ok':'warn');
  }else{setValue('featureCoverage','—');setValue('featureCoverageDetail','両方のデータが必要');}
+ 
+ const catalogAt=catalog?.data?.generatedAt||'記録なし';
+ const featuresAt=features?.data?.generatedAt||'記録なし';
+ setValue('updateCatalogAt',catalogAt);
+ setValue('updateFeaturesAt',featuresAt);
+ if(catalog&&features){
+   const same=!!catalog.data.generatedAt&&catalog.data.generatedAt===features.data.generatedAt;
+   setValue('updateSyncState',same?'一致':'要確認');
+   setValue('updateSyncDetail',same?'カタログと画像特徴データの生成日時が一致':'生成日時が異なる、または記録がありません。画像特徴データが古い可能性があります。');
+ }else{
+   setValue('updateSyncState','確認不可');
+   setValue('updateSyncDetail','カタログと画像特徴データの両方が読み込めた場合に確認します。');
+ }
+
  setValue('lastChecked','最終チェック：'+new Date().toLocaleString('ja-JP'));
  $('refresh').disabled=false;$('refresh').textContent='もう一度チェック';
 }
