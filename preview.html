@@ -133,7 +133,28 @@ footer{padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
 <svg class="barcode" id="barcode" viewBox="0 0 320 110" role="img" aria-label="バーコードは未生成です"></svg>
 </section>
 </main>
-<footer>Francfranc 商品検索</footer>
+<footer>Francfranc 商品検索
+  <div style="margin-top:18px">
+    <button type="button" id="adminGear" aria-label="管理者メニューを開く" title="管理者メニュー" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;margin:0;padding:0;border:1px solid #ddd5cf;border-radius:50%;background:#fff;color:#665950;box-shadow:none">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.8 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.8-1l-1.7.7-1.4-2.4 1.4-1.1a7 7 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.8-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.8 1l1.7-.7 1.4 2.4-1.4 1.1a7 7 0 0 1 0 2Z" transform="translate(-1 -1) scale(1.04)"></path></svg>
+    </button>
+    <div style="font-size:11px;margin-top:5px;color:#8a7b72">管理者</div>
+  </div>
+</footer>
+<dialog id="adminPinDialog" style="width:min(calc(100% - 32px),360px);border:1px solid #e5dcd5;border-radius:18px;padding:22px;color:#292522;box-shadow:0 12px 50px #0003">
+  <form id="adminPinForm">
+    <h2 style="margin:0 0 8px;font-size:19px">管理者メニュー</h2>
+    <p style="font-size:13px;line-height:1.65;color:#6e625b">4桁のPINを入力してください。</p>
+    <label for="adminPin" style="display:block;font-size:13px;font-weight:600">PIN（4桁）</label>
+    <input id="adminPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="••••" required style="width:100%;padding:13px;border:1px solid #ccc;border-radius:9px;margin-top:8px;font-size:20px;letter-spacing:8px">
+    <p id="adminPinError" role="status" style="min-height:20px;font-size:12px;color:#9b2d20"></p>
+    <div style="padding:10px;background:#fff5e8;border-radius:9px;font-size:11px;line-height:1.6;color:#795a32">プレビュー用の仮PINは <strong>2468</strong> です。画面内だけの簡易チェックで、実際のアクセス制限ではありません。本番では使用しないでください。</div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button type="button" id="adminPinCancel" style="margin:0;background:#eee;color:#333">キャンセル</button>
+      <button type="submit" style="margin:0;background:#b97869">開く</button>
+    </div>
+  </form>
+</dialog>
 <script>
 window.addEventListener('error',function(event){
   const status=document.getElementById('photoStatus');
@@ -846,6 +867,24 @@ jan.addEventListener('input',()=>{
   if(!validJan(s)){barcodeStatus.className='status error';barcodeStatus.textContent='チェックデジットが一致しません。品番を公式商品ページで再確認してください。';return;}
   drawBarcode(s);
   barcodeStatus.className='status';barcodeStatus.textContent='形式チェックOK。これは入力した数字から生成したバーコードです。実際の商品と一致することを確認してから使用してください。';
+});
+
+const adminGear=document.getElementById('adminGear');
+const adminPinDialog=document.getElementById('adminPinDialog');
+const adminPinInput=document.getElementById('adminPin');
+const adminPinError=document.getElementById('adminPinError');
+adminGear.addEventListener('click',()=>{adminPinError.textContent='';adminPinInput.value='';adminPinDialog.showModal();adminPinInput.focus();});
+document.getElementById('adminPinCancel').addEventListener('click',()=>adminPinDialog.close());
+adminPinInput.addEventListener('input',()=>{adminPinInput.value=adminPinInput.value.replace(/[^0-9]/g,'').slice(0,4);adminPinError.textContent='';});
+document.getElementById('adminPinForm').addEventListener('submit',event=>{
+  event.preventDefault();
+  if(adminPinInput.value==='2468'){
+    adminPinDialog.close();
+    window.location.href='./admin-preview.html?v=0a6caef';
+  }else{
+    adminPinError.textContent='PINが違います。もう一度入力してください。';
+    adminPinInput.select();
+  }
 });
 </script>
 </body>
