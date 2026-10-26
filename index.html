@@ -43,7 +43,7 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 </style>
 </head>
 <body>
-<button type="button" id="clearApp" onclick="window.location.reload()" aria-label="写真と検索結果をクリア" title="写真と検索結果をクリア" style="position:fixed!important;right:18px!important;bottom:calc(22px + env(safe-area-inset-bottom,0px))!important;top:auto!important;left:auto!important;z-index:2147483647!important;width:58px!important;height:58px!important;min-width:58px!important;min-height:58px!important;margin:0!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#333!important;color:#fff!important;border:2px solid #fff!important;border-radius:50%!important;font-size:14px!important;font-weight:700!important;box-shadow:0 3px 12px rgba(0,0,0,.3)!important">クリア</button>
+<button type="button" id="clearApp" onclick="window.location.href=window.location.pathname+'?reset='+Date.now()" aria-label="写真と検索結果をクリア" title="写真と検索結果をクリア" style="position:fixed!important;right:18px!important;bottom:calc(22px + env(safe-area-inset-bottom,0px))!important;top:auto!important;left:auto!important;z-index:2147483647!important;width:58px!important;height:58px!important;min-width:58px!important;min-height:58px!important;margin:0!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#333!important;color:#fff!important;border:2px solid #fff!important;border-radius:50%!important;font-size:14px!important;font-weight:700!important;box-shadow:0 3px 12px rgba(0,0,0,.3)!important">クリア</button>
 <header>
 <h1>Francfranc</h1>
 <p>PRODUCT FINDER · 社内業務用 試作版</p>
@@ -187,7 +187,7 @@ function renderProgressCandidates(scored){
     img.addEventListener('error',()=>img.style.display='none');
     const title=document.createElement('strong');title.textContent=p.title||'商品名未取得';
     const detail=document.createElement('p');detail.textContent='品番：'+(p.itemCode||'未取得')+' / 類似度（参考）：'+(item.score*100).toFixed(1);
-    const choose=document.createElement('button');choose.type='button';choose.className='chooseProduct';choose.textContent='この商品を選ぶ（検索を中断）';
+    const choose=document.createElement('button');choose.type='button';choose.className='chooseProduct';choose.textContent='バーコードを表示';
     choose.addEventListener('click',()=>{
       if(photo.dataset.url)URL.revokeObjectURL(photo.dataset.url);
       selectedPhotoFile=null;
@@ -300,7 +300,7 @@ function renderCatalog(){
     const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
     const productCode=getProductCode(p);
     const code=productCode?escapeHtml(productCode):'品番未取得';
-    card.innerHTML=image+'<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+code+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
+    card.innerHTML=image+'<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+code+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>';
     card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
     catalogResults.appendChild(card);
   }
@@ -712,7 +712,7 @@ search.addEventListener('click',async()=>{
       const p=item.product;
       const card=document.createElement('article');card.className='card';card.style.marginTop='12px';
       const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
-      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>'+renderRelatedVariants(p);
+      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>'+renderRelatedVariants(p);
       const productImage=document.createElement('img');
       productImage.src=p.image;
       productImage.alt=p.title||'商品画像';
@@ -739,7 +739,7 @@ search.addEventListener('click',async()=>{
     const elapsedSeconds=((performance.now()-searchStartedAt)/1000).toFixed(1);
     photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒です。上位候補から商品を確認してください。`;
     catalogResults.style.display='block';
-    catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
+    catalogResults.querySelector('.chooseProduct')?.scrollIntoView({behavior:'smooth',block:'center'});
   }catch(error){
     console.error(error);
     // Always show usable catalog candidates when AI comparison fails, so the user is not left with an empty result area.
@@ -752,7 +752,7 @@ search.addEventListener('click',async()=>{
       card.className='card';
       card.style.marginTop='12px';
       const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
-      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">この商品を選ぶ</button>';
+      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>';
       if(p.image){
         const img=document.createElement('img');
         img.src=p.image;img.alt=p.title||'商品画像';img.loading='eager';
