@@ -29,9 +29,9 @@ h2{font-size:18px}
 .camera-actions .secondary{background:#555}
 #catalogResults:empty{display:none}
 #catalogResults:not(:empty){display:block}
-#catalogResults{max-height:55vh;overflow-y:auto;overscroll-behavior:contain;padding-bottom:4px;scrollbar-gutter:stable}
+#catalogResults{max-height:none;overflow:visible;overscroll-behavior:auto;padding-bottom:12px;scrollbar-gutter:auto}
 #catalogQuery{scroll-margin-top:18px;position:relative;z-index:5;background:#fff;box-shadow:0 0 0 5px #fff;scroll-behavior:auto}
-@media(max-width:600px){input[type=text]{font-size:16px}#catalogResults{max-height:50vh}}
+@media(max-width:600px){input[type=text]{font-size:16px}#catalogResults{max-height:none;overflow:visible}}
 button{width:100%;border:0;border-radius:10px;padding:15px;margin-top:14px;background:#333;color:white;font-size:16px;cursor:pointer}
 button:disabled{opacity:.5}
 .card{background:white;border-radius:14px;padding:18px;margin-top:22px}
@@ -40,22 +40,44 @@ input[type=text]{width:100%;padding:13px;border:1px solid #ccc;border-radius:8px
 .status{padding:12px;border-radius:8px;background:#f0ede9;font-size:13px;line-height:1.7;margin-top:14px}
 .status.error{background:#fff0ee;color:#9b2d20}
 footer{text-align:center;font-size:11px;color:#888;padding:25px}
+
+/* Staff-facing visual refresh */
+body{background:#faf8f6;color:#292522}
+header{padding:22px 18px 18px;background:#fff}
+header h1{font-size:23px;letter-spacing:2.5px}
+header p{font-size:10px;letter-spacing:2px;color:#8a7b72}
+main{padding:18px 16px 32px}
+main>h2{font-size:21px;margin:8px 0 4px}
+main>p.note{margin-top:0;margin-bottom:18px}
+.upload{border:1px solid #e5dcd5;border-radius:18px;padding:18px;background:#fff;box-shadow:0 3px 14px rgba(66,45,32,.04)}
+.upload strong{font-size:17px;margin-bottom:14px}
+#cameraPick{background:#292522;margin-top:8px}
+#libraryFile{border-color:#e0d5cd!important}
+#photo{background:#fff;border:1px solid #eee2da;padding:8px;max-height:360px}
+#search{background:#b97869;border-radius:13px;font-weight:700;min-height:54px;box-shadow:0 3px 10px rgba(185,120,105,.18)}
+.card{border:1px solid #eee6e0;box-shadow:0 3px 14px rgba(66,45,32,.035);border-radius:16px}
+#textSearchPanel{padding:16px;margin-top:22px;background:#fff}
+#textSearchPanel summary{list-style-position:inside}
+#textSearchPanel[open] summary{margin-bottom:12px}
+#clearApp{background:#292522!important}
+footer{padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
+
 </style>
 </head>
 <body>
 <button type="button" id="clearApp" onclick="window.location.href=window.location.pathname+'?reset='+Date.now()" aria-label="写真と検索結果をクリア" title="写真と検索結果をクリア" style="position:fixed!important;right:18px!important;bottom:calc(22px + env(safe-area-inset-bottom,0px))!important;top:auto!important;left:auto!important;z-index:2147483647!important;width:58px!important;height:58px!important;min-width:58px!important;min-height:58px!important;margin:0!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#333!important;color:#fff!important;border:2px solid #fff!important;border-radius:50%!important;font-size:14px!important;font-weight:700!important;box-shadow:0 3px 12px rgba(0,0,0,.3)!important">クリア</button>
 <header>
 <h1>Francfranc</h1>
-<p>PRODUCT FINDER · 社内業務用 試作版</p>
+<p>PRODUCT FINDER</p>
 </header>
 <main>
-<h2>商品を写真から検索</h2>
-<p class="note">店頭の商品を撮影、または写真を選択してください。</p>
+<h2>商品を探す</h2>
+<p class="note">商品の写真を撮影するか、ライブラリから選んでください。</p>
 <div class="upload">
-<strong>📷 商品写真を選ぶ</strong>
-<button type="button" id="cameraPick">カメラで撮影する</button>
-<div style="margin-top:12px"><label for="libraryFile" style="display:block;margin-bottom:8px;font-weight:600">写真ライブラリから選ぶ</label><input id="libraryFile" type="file" accept="image/*" aria-label="写真ライブラリから選ぶ" style="display:block;width:100%;min-height:56px;padding:10px;background:#fff;color:#333;border:1px solid #aaa;border-radius:12px;font-size:16px"></div>
-<span class="note">撮影する方法と、保存済み写真を選ぶ方法を分けました。</span>
+<strong>📷 商品写真</strong>
+<button type="button" id="cameraPick">写真を撮る</button>
+<div style="margin-top:12px"><label for="libraryFile" style="display:block;margin-bottom:8px;font-weight:600">ライブラリから選ぶ</label><input id="libraryFile" type="file" accept="image/*" aria-label="写真ライブラリから選ぶ" style="display:block;width:100%;min-height:56px;padding:10px;background:#fff;color:#333;border:1px solid #aaa;border-radius:12px;font-size:16px"></div>
+
 </div>
 <input id="file" type="file" accept="image/*" capture="environment" hidden>
 
@@ -65,12 +87,12 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 <div class="camera-stage"><video id="cameraVideo" autoplay playsinline muted></video><div class="camera-frame" aria-hidden="true"></div></div>
 <div class="camera-actions"><button type="button" id="takePhoto">撮影する</button><button type="button" class="secondary" id="closeCamera">戻る</button></div><canvas id="cameraCanvas" hidden></canvas></div>
 
-<button id="search" type="button">商品を検索する</button>
-<div class="status" id="photoStatus" role="status">写真検索のAIはまだ未接続です。現在は写真の選択・表示を確認できます。</div>
+<button id="search" type="button">この写真から商品を検索</button>
+<div class="status" id="photoStatus" role="status">写真を選ぶと、検索の準備状況がここに表示されます。</div>
 
-<section class="card">
-<h2>掲載商品を確認（仮）</h2>
-<p class="note">商品名・品番で候補を探せます。写真から探す場合は、上の写真検索を使ってください。</p>
+<details class="card" id="textSearchPanel">
+<summary style="cursor:pointer;font-weight:600;font-size:16px">商品名・品番から探す</summary>
+<p class="note">商品名や品番が分かっている場合はこちらから検索できます。</p>
 <label for="catalogQuery">商品名・品番で検索</label>
 <input id="catalogQuery" type="text" autocomplete="off" placeholder="例：ワイヤーキッチンラック / 1101070063809">
 <details id="categorySettings" style="margin-top:12px">
@@ -95,9 +117,10 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
   </div>
 </section>
 </details>
+</details>
+
 <div class="status" id="catalogStatus" role="status">カタログを読み込み中です…</div>
-<div id="catalogResults"></div>
-</section>
+<div id="catalogResults" aria-live="polite"></div>
 
 <section class="card" id="barcodeCard" style="display:none">
 <h2>選択した商品のバーコード</h2>
@@ -109,7 +132,9 @@ footer{text-align:center;font-size:11px;color:#888;padding:25px}
 <svg class="barcode" id="barcode" viewBox="0 0 320 110" role="img" aria-label="バーコードは未生成です"></svg>
 </section>
 </main>
-<footer>社内利用を想定した試作画面 · 未確認コードでのレジ処理は禁止</footer>
+<footer>Francfranc 商品検索
+</footer>
+
 <script>
 window.addEventListener('error',function(event){
   const status=document.getElementById('photoStatus');
@@ -131,7 +156,8 @@ clearAppButton.addEventListener('click',()=>{
   photo.style.display='none';
   document.getElementById('search').disabled=true;
   photoStatus.className='status';
-  photoStatus.textContent='写真を選ぶと商品検索を開始できます。';
+  photoStatus.hidden=true;
+  photoStatus.textContent='';
   catalogQuery.value='';
   lastCatalogQuery='';
   catalogVisibleCount=30;
@@ -194,7 +220,8 @@ function renderProgressCandidates(scored){
       file.value='';libraryFile.value='';
       stopImageSearch=true;
       selectProduct(p,card);
-      photoStatus.textContent='途中候補を選択しました。残りの画像比較は中断しました。必要なら写真を選び直して再検索できます。';
+      photoStatus.hidden=false;
+      photoStatus.textContent='商品をバーコード表示済み。';
     });
     card.append(img,title,detail,choose);catalogResults.appendChild(card);
   }
@@ -337,9 +364,9 @@ function selectProduct(p,card){
   }
   if(card){
     const btn=card.querySelector('.chooseProduct');
-    if(btn)btn.textContent='選択しました';
+    if(btn)btn.textContent='バーコード表示済み';
   }
-  photoStatus.textContent='商品を選択しました。商品名・価格・品番・バーコードを確認してください。';
+  photoStatus.textContent='商品をバーコード表示済み。商品名・価格・品番・バーコードを確認してください。';
   barcodeCard.scrollIntoView({behavior:'smooth',block:'start'});
 }
 let catalogDataGeneratedAt=null;
@@ -445,6 +472,7 @@ document.getElementById('takePhoto').addEventListener('click',async()=>{
 if(libraryPick)libraryPick.addEventListener('click',()=>libraryFile.click());
 function handlePhotoFile(f,message){
   if(!f)return;
+  photoStatus.hidden=false;
   selectedPhotoFile=f;
   photo.style.display='none';
   search.disabled=true;
@@ -456,6 +484,10 @@ function handlePhotoFile(f,message){
   photo.onload=()=>{
     photo.style.display='block';
     search.disabled=false;
+    requestAnimationFrame(()=>{
+      const photoBlock=photo.closest('.card')||photo.parentElement;
+      (photoBlock||search).scrollIntoView({behavior:'smooth',block:'center'});
+    });
     photoStatus.className='status';
     photoStatus.textContent=message||'写真を読み込みました。「商品を検索する」を押すと、公式掲載商品の画像と比較します。';
   };
@@ -564,6 +596,7 @@ async function fetchImageBlobUrl(url){
   return URL.createObjectURL(await response.blob());
 }
 search.addEventListener('click',async()=>{
+  photoStatus.hidden=false;
   photoStatus.className='status';
   photoStatus.textContent='検索ボタンを押しました。カタログと検索機能を確認中…';
   if(imageSearchBusy){photoStatus.textContent='すでに検索処理中です。少し待ってください。';return;}
@@ -815,6 +848,7 @@ jan.addEventListener('input',()=>{
   drawBarcode(s);
   barcodeStatus.className='status';barcodeStatus.textContent='形式チェックOK。これは入力した数字から生成したバーコードです。実際の商品と一致することを確認してから使用してください。';
 });
+
 </script>
 </body>
 </html>
