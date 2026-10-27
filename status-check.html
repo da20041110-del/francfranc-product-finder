@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>商品検索 状態確認</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f7f6f4;color:#333;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",Arial,sans-serif}header{background:#fff;padding:22px 16px;text-align:center;border-bottom:1px solid #e5e0dc}h1{font-size:20px;margin:0}main{max-width:640px;margin:24px auto;padding:0 16px 32px}.intro{font-size:14px;color:#666;line-height:1.7}.panel{background:#fff;border:1px solid #e7e1dc;border-radius:14px;padding:18px;margin:14px 0}.panel h2{font-size:16px;margin:0 0 14px}.item{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #eee}.item:last-child{border-bottom:0}.key{color:#666;font-size:14px}.value{text-align:right;font-weight:600;overflow-wrap:anywhere}.status{display:inline-block;border-radius:20px;padding:4px 10px;background:#eee;font-size:13px}.ok{background:#e7f4e8;color:#226b30}.warn{background:#fff1d6;color:#805500}.error{background:#fde8e7;color:#9b2420}button,a.button{display:block;width:100%;border:0;border-radius:10px;background:#333;color:white;text-align:center;padding:14px;font-size:15px;text-decoration:none;margin-top:12px;cursor:pointer}.secondary{background:#eee!important;color:#333!important}small{color:#777;line-height:1.7;display:block;margin-top:12px}footer{text-align:center;color:#888;font-size:12px;margin-top:20px}
+</style>
+</head>
+<body>
+<header><h1>商品検索 状態確認</h1></header>
+<main>
+<p class="intro">商品検索アプリの公開カタログと事前解析データを読み取り専用で確認します。このページから更新や設定変更はできません。</p>
+<section class="panel">
+<h2>カタログ</h2>
+<div class="item"><span class="key">読み込み状態</span><span class="value"><span id="catalogState" class="status">確認中</span></span></div>
+<div class="item"><span class="key">最終生成日時</span><span class="value" id="generatedAt">確認中</span></div>
+<div class="item"><span class="key">商品データ件数</span><span class="value" id="productCount">確認中</span></div>
+<div class="item"><span class="key">画像あり</span><span class="value" id="imageCount">確認中</span></div>
+<div class="item"><span class="key">品番あり</span><span class="value" id="codeCount">確認中</span></div>
+<div class="item"><span class="key">取得対象URL数</span><span class="value" id="attempted">確認中</span></div>
+</section>
+<section class="panel">
+<h2>事前解析データ</h2>
+<div class="item"><span class="key">読み込み状態</span><span class="value"><span id="featuresState" class="status">確認中</span></span></div>
+<div class="item"><span class="key">解析データ件数</span><span class="value" id="featureCount">確認中</span></div>
+<div class="item"><span class="key">カタログとの日時一致</span><span class="value" id="dateMatch">確認中</span></div>
+</section>
+<section class="panel">
+<h2>更新処理の確認</h2>
+<p style="font-size:14px;line-height:1.7;margin:0">このページでは、公開済みデータが読み込めるかを確認できます。更新ワークフローの実行結果や詳細ログは、下のGitHub Actionsから確認してください。</p>
+<a class="button" href="https://github.com/da20041110-del/francfranc-product-finder/actions/workflows/refresh-current-catalog.yml" target="_blank" rel="noopener">カタログ更新履歴を開く</a>
+<button class="secondary" id="reload" type="button">状態を再確認</button>
+<small>このURLを知っている人はページを閲覧できます。秘密情報は表示しませんが、URL自体はアクセス制限ではありません。</small>
+</section>
+<footer>Francfranc 商品検索ツール · 読み取り専用</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+function setState(id,text,kind){const el=$(id);el.textContent=text;el.className='status'+(kind?' '+kind:'');}
+async function check(){
+  $('generatedAt').textContent='確認中';$('productCount').textContent='確認中';$('imageCount').textContent='確認中';$('codeCount').textContent='確認中';$('attempted').textContent='確認中';$('featureCount').textContent='確認中';$('dateMatch').textContent='確認中';
+  setState('catalogState','確認中','');setState('featuresState','確認中','');
+  let catalog=null,features=null;
+  try{
+    const r=await fetch('./catalog.json?check='+Date.now(),{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    catalog=await r.json();
+    const products=Array.isArray(catalog.products)?catalog.products:[];
+    $('generatedAt').textContent=catalog.generatedAt||'記録なし';
+    $('productCount').textContent=products.length.toLocaleString('ja-JP')+' 件';
+    $('imageCount').textContent=products.filter(p=>p&&p.image).length.toLocaleString('ja-JP')+' 件';
+    $('codeCount').textContent=products.filter(p=>p&&p.itemCode).length.toLocaleString('ja-JP')+' 件';
+    $('attempted').textContent=(catalog.attempted??'記録なし')+' 件';
+    setState('catalogState','読み込み成功','ok');
+  }catch(e){setState('catalogState','読み込み失敗','error');$('generatedAt').textContent='取得できません';$('productCount').textContent='取得できません';$('imageCount').textContent='取得できません';$('codeCount').textContent='取得できません';$('attempted').textContent='取得できません';}
+  try{
+    const r=await fetch('./image-features.json?check='+Date.now(),{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    features=await r.json();
+    const count=Object.keys(features.features||{}).length;
+    $('featureCount').textContent=count.toLocaleString('ja-JP')+' 件';
+    setState('featuresState','読み込み成功','ok');
+    if(catalog&&catalog.generatedAt&&features.catalogGeneratedAt){
+      const match=catalog.generatedAt===features.catalogGeneratedAt;
+      $('dateMatch').textContent=match?'一致':'不一致';
+      $('dateMatch').style.color=match?'#226b30':'#9b2420';
+    }else{$('dateMatch').textContent='比較情報なし';}
+  }catch(e){setState('featuresState','読み込み失敗','error');$('featureCount').textContent='取得できません';$('dateMatch').textContent='確認できません';}
+}
+$('reload').addEventListener('click',check);check();
+</script>
+</body>
+</html>
