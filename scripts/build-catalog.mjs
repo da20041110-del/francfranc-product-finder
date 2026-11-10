@@ -123,13 +123,17 @@ function getMeta(html, key) {
   return "";
 }
 
-function extractVisibleItemCode(html) {
+function extractVisibleItemCodes(html) {
   const text = decodeHtml(html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\\s\\S]*?<\\/script>/gi, " ")
+    .replace(/<style[\\s\\S]*?<\\/style>/gi, " ")
     .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " "));
-  return text.match(/品番\s*[:：|]?\s*(\d{13})/)?.[1] || "";
+    .replace(/\\s+/g, " "));
+  return [...new Set([...text.matchAll(/品番\\s*[:：|]?\\s*(\\d{13})/g)].map((m) => m[1]))];
+}
+function extractVisibleItemCode(html) {
+  const candidates = extractVisibleItemCodes(html);
+  return candidates.length === 1 ? candidates[0] : "";
 }
 function hasValidEan13CheckDigit(code) {
   if (!/^\d{13}$/.test(String(code || ""))) return false;
@@ -153,7 +157,9 @@ function extractItemCode(html, product, allowVisibleCode = true) {
 
 function parseProducts(url, html) {
   const nodes = getJsonLdProducts(html);
-  const visibleCode = nodes.length <= 1 ? extractVisibleItemCode(html) : "";
+  const visibleCodeCandidates = extractVisibleItemCodes(html);
+  const visibleCodeAmbiguous = visibleCodeCandidates.length > 1;
+  const visibleCode = nodes.length <= 1 && !visibleCodeAmbiguous ? extractVisibleItemCode(html) : "";
   const usableNodes = nodes.length ? nodes : [{}];
   const metaTitle = getMeta(html, "og:title") || getMeta(html, "twitter:title");
   const h1 = decodeHtml(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1]?.replace(/<[^>]+>/g, " ") || "").trim();
@@ -163,10 +169,10 @@ function parseProducts(url, html) {
     const offers = Array.isArray(p.offers) ? p.offers[0] : (p.offers || {});
     const rawImage = Array.isArray(p.image) ? p.image[0] : p.image;
     const image = typeof rawImage === "object" ? (rawImage?.url || rawImage?.contentUrl || "") : rawImage;
-    const code = extractItemCode(html, p, nodes.length <= 1);
+    const code = visibleCodeAmbiguous ? "" : extractItemCode(html, p, nodes.length <= 1);
     const itemCodeSource = code
       ? (nodes.length <= 1 && code === visibleCode ? "visible_label" : "structured_sku")
-      : "none";
+      : (visibleCodeAmbiguous ? "ambiguous_visible_labels" : "none");
     return {
       title: decodeHtml(String(p.name || h1 || metaTitle).replace(/\s*[|｜].*$/, "")).trim(),
       price: offers.price != null ? String(offers.price) : (metaPrice || ""),
@@ -175,6 +181,7 @@ function parseProducts(url, html) {
       url,
       itemCode: code || (nodes.length <= 1 ? visibleCode : ""),
       itemCodeSource,
+      visibleCodeCandidates,
       codeStatus: itemCodeSource === "visible_label" ? "normal" : itemCodeSource === "structured_sku" ? "review" : "blocked",
       source: "Francfranc公式商品ページ",
       checkedAt: new Date().toISOString(),
