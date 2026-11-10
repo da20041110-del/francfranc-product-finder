@@ -110,13 +110,6 @@ function getJsonLdProducts(html) {
   return out;
 }
 
-function decodeHtml(value = "") {
-  return value
-    .replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)));
-}
-
 function getMeta(html, key) {
   const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const patterns = [
