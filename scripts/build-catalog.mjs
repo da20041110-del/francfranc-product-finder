@@ -99,9 +99,11 @@ function extractItemCode(html, product) {
   if (match) return match[1];
   const sku = String(product?.sku || "");
   if (/^\d{13}$/.test(sku)) return sku;
-  // Fallback for official product pages whose structured data omits the code.
-  const slugCode = String(url).match(/\/products\/(\d{13})(?:[/?#]|$)/)?.[1] || "";
-  return /^\d{13}$/.test(slugCode) ? slugCode : "";
+  // Do not use the URL slug as a barcode. On grouped/variant product pages,
+  // the URL may identify a parent product rather than the sellable item's JAN.
+  // If the official page and its structured SKU do not expose a 13-digit code,
+  // leave the field empty rather than publishing a potentially incorrect barcode.
+  return "";
 }
 
 function parseProduct(url, html) {
