@@ -191,11 +191,10 @@ document.getElementById('clearCategories').addEventListener('click',()=>{
 categoryChoices.forEach(el=>el.addEventListener('change',renderCatalog));
 function getSelectedCategories(){const selected=categoryChoices.filter(el=>el.checked).map(el=>el.value);return selected.length?selected:categoryChoices.map(el=>el.value);}
 function getProductCode(p){
+  // Only use a code explicitly extracted from the official page or structured SKU.
+  // A product URL can identify a parent/series page, not a sellable JAN.
   const explicit=String(p?.itemCode||'').replace(/\D/g,'');
-  if(/^\d{13}$/.test(explicit))return explicit;
-  // Use the official product URL's 13-digit slug when the page omits its code.
-  const match=String(p?.url||'').match(/\/products\/(\d{13})(?:[/?#]|$)/);
-  return match?match[1]:explicit;
+  return /^\d{13}$/.test(explicit)?explicit:'';
 }
 function renderProgressCandidates(scored){
   const top=[...scored].sort((a,b)=>b.score-a.score).slice(0,3);
@@ -299,7 +298,7 @@ function renderCatalog(){
     return true;
   }).map(p=>{
     const title=normalizeJapaneseSearch(p.title||'');
-    const code=String(p.itemCode||'').replace(/\D/g,'');
+    const code=getProductCode(p);
     let score=0;
     if(title===q)score=100;
     else if(title.startsWith(q))score=80;
