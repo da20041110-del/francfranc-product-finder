@@ -776,7 +776,7 @@ search.addEventListener('click',async()=>{
       const p=item.product;
       const card=document.createElement('article');card.className='card';card.style.marginTop='12px';
       const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
-      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>'+renderRelatedVariants(p);
+      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p>'+codeStatusHtml(p)+'<p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>'+renderRelatedVariants(p);
       const productImage=document.createElement('img');
       productImage.src=p.image;
       productImage.alt=p.title||'商品画像';
