@@ -3,6 +3,7 @@ name: Refresh current Francfranc catalog
 on:
   # Any scraper/workflow change refreshes the full catalog, never a partial test catalog.
   push:
+    branches: [main]
     paths:
       - 'scripts/build-catalog.mjs'
       - '.github/workflows/refresh-current-catalog.yml'
