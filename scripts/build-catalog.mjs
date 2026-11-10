@@ -125,11 +125,11 @@ function getMeta(html, key) {
 
 function extractVisibleItemCodes(html) {
   const text = decodeHtml(html
-    .replace(/<script[\\s\\S]*?<\\/script>/gi, " ")
-    .replace(/<style[\\s\\S]*?<\\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<[^>]+>/g, " ")
-    .replace(/\\s+/g, " "));
-  return [...new Set([...text.matchAll(/品番\\s*[:：|]?\\s*(\\d{13})/g)].map((m) => m[1]))];
+    .replace(/\s+/g, " "));
+  return [...new Set([...text.matchAll(/品番\s*[:：|]?\s*(\d{13})/g)].map((m) => m[1]))];
 }
 function extractVisibleItemCode(html) {
   const candidates = extractVisibleItemCodes(html);
