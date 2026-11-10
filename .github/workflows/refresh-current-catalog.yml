@@ -39,6 +39,7 @@ jobs:
         run: |
           node --input-type=module -e "import fs from 'node:fs'; const c=JSON.parse(fs.readFileSync('catalog.json','utf8')); console.log(JSON.stringify({generatedAt:c.generatedAt,attempted:c.attempted,found:c.found,withItemCode:c.products.filter(p=>p.itemCode).length,withImage:c.products.filter(p=>p.image).length},null,2))"
       - name: Publish refreshed catalog to the repository
+        if: github.ref == 'refs/heads/main'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
