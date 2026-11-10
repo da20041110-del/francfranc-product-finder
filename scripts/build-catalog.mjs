@@ -131,6 +131,12 @@ function extractVisibleItemCode(html) {
     .replace(/\s+/g, " "));
   return text.match(/品番\s*[:：|]?\s*(\d{13})/)?.[1] || "";
 }
+function hasValidEan13CheckDigit(code) {
+  if (!/^\d{13}$/.test(String(code || ""))) return false;
+  const digits = String(code).split("").map(Number);
+  const sum = digits.slice(0, 12).reduce((total, digit, index) => total + digit * (index % 2 === 0 ? 1 : 3), 0);
+  return (10 - (sum % 10)) % 10 === digits[12];
+}
 
 function extractItemCode(html, product, allowVisibleCode = true) {
   // The visible official "品番" is the primary POS source. For a page with
@@ -218,6 +224,10 @@ if (!urls.length) {
     attempted: selected.length,
     found: products.length,
     uniqueProductPagesFound: new Set(products.map(p => p.url)).size,
+    visibleLabelCodeCount: products.filter(p => p.itemCodeSource === "visible_label").length,
+    structuredSkuCodeCount: products.filter(p => p.itemCodeSource === "structured_sku").length,
+    missingCodeCount: products.filter(p => !p.itemCode).length,
+    invalidCheckDigitCount: products.filter(p => p.itemCode && !hasValidEan13CheckDigit(p.itemCode)).length,
     fetchFailed: failed.length,
     noProductData: noProductData.length,
     failed,
