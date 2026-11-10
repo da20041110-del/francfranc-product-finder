@@ -133,10 +133,16 @@ function extractVisibleItemCode(html) {
 }
 
 function extractItemCode(html, product, allowVisibleCode = true) {
+  // The visible official "品番" is the primary POS source. For a page with
+  // multiple Product variants, do not reuse one visible code for every variant.
+  if (allowVisibleCode) {
+    const visibleCode = extractVisibleItemCode(html);
+    if (/^\d{13}$/.test(visibleCode)) return visibleCode;
+  }
+  // Structured SKU/MPN is a secondary source when the visible page label
+  // cannot be extracted. Never use the product URL slug as a code.
   const sku = String(product?.sku || product?.mpn || "");
-  if (/^\d{13}$/.test(sku)) return sku;
-  if (allowVisibleCode) return extractVisibleItemCode(html);
-  return "";
+  return /^\d{13}$/.test(sku) ? sku : "";
 }
 
 function parseProducts(url, html) {
