@@ -196,6 +196,27 @@ function getProductCode(p){
   const explicit=String(p?.itemCode||'').replace(/\D/g,'');
   return /^\d{13}$/.test(explicit)?explicit:'';
 }
+function getCodeStatus(p){
+  const code=getProductCode(p);
+  if(!code)return 'blocked';
+  if(typeof validJan==='function'&&!validJan(code))return 'blocked';
+  if(p?.codeStatus==='review'||p?.itemCodeSource==='structured_sku')return 'review';
+  if(p?.itemCodeSource==='visible_label')return 'normal';
+  // Older catalog records have no source metadata, so do not silently call them verified.
+  return 'review';
+}
+function codeWarningText(p){
+  const status=getCodeStatus(p);
+  if(status==='blocked')return '⚠ 品番を確認できません。公式ページまたは現物で確認するまでバーコードは使用しないでください。';
+  if(status==='review')return '⚠ 品番の取得元を要確認。公式ページの品番と商品が一致するか確認してください。';
+  return '';
+}
+function codeStatusHtml(p){
+  const status=getCodeStatus(p);
+  if(status==='normal')return '';
+  const message=codeWarningText(p);
+  return '<p role="alert" style="padding:9px 11px;border-radius:8px;background:'+(status==='blocked'?'#fde8e7':'#fff1d6')+';color:'+(status==='blocked'?'#9b2420':'#805500')+';font-size:13px;font-weight:600">'+escapeHtml(message)+'</p>';
+}
 function renderProgressCandidates(scored){
   const top=[...scored].sort((a,b)=>b.score-a.score).slice(0,3);
   catalogResults.style.display='block';
@@ -326,7 +347,7 @@ function renderCatalog(){
     const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
     const productCode=getProductCode(p);
     const code=productCode?escapeHtml(productCode):'品番未取得';
-    card.innerHTML=image+'<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+code+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>';
+    card.innerHTML=image+'<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+code+'</p>'+codeStatusHtml(p)+'<p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>';
     card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
     catalogResults.appendChild(card);
   }
@@ -345,17 +366,28 @@ function selectProduct(p,card){
   const code=getProductCode(p);
   const barcodeCard=document.getElementById('barcodeCard');
   barcodeCard.style.display='block';
+  let codeWarning=document.getElementById('selectedCodeWarning');
+  if(!codeWarning){
+    codeWarning=document.createElement('p');
+    codeWarning.id='selectedCodeWarning';
+    codeWarning.setAttribute('role','alert');
+    barcodeCard.insertBefore(codeWarning,barcodeCard.querySelector('label[for="jan"]'));
+  }
+  const codeStatus=getCodeStatus(p);
+  codeWarning.hidden=codeStatus==='normal';
+  codeWarning.textContent=codeWarningText(p);
+  codeWarning.style.cssText='padding:10px 12px;border-radius:8px;font-size:14px;font-weight:600;background:'+(codeStatus==='blocked'?'#fde8e7':'#fff1d6')+';color:'+(codeStatus==='blocked'?'#9b2420':'#805500');
   const officialLink=document.getElementById('officialProductLink');
   if(officialLink){
     officialLink.href=p.url||'#';
     officialLink.hidden=!p.url;
   }
-  if(/^\d{13}$/.test(code)){
+  if(/^\d{13}$/.test(code)&&codeStatus!=='blocked'){
     jan.value=code;
     jan.dispatchEvent(new Event('input'));
-    barcodeStatus.textContent=validJan(code)
-      ? '選択した商品の品番です。商品と一致することを確認してください。'
-      : '品番は13桁ですが、チェックデジットが一致しません。公式商品ページで確認してください。';
+    barcodeStatus.textContent=codeStatus==='review'
+      ? '要確認：番号は取得できていますが、取得元の確実性が十分ではありません。公式ページの品番と商品を照合してください。'
+      : '公式ページの品番欄から取得しました。公式ページの登録内容自体が正しいことまでは保証されないため、商品との一致を確認してください。';
   }else{
     jan.value='';
     jan.dispatchEvent(new Event('input'));
