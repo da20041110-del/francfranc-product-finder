@@ -158,6 +158,9 @@ function parseProducts(url, html) {
     const rawImage = Array.isArray(p.image) ? p.image[0] : p.image;
     const image = typeof rawImage === "object" ? (rawImage?.url || rawImage?.contentUrl || "") : rawImage;
     const code = extractItemCode(html, p, nodes.length <= 1);
+    const itemCodeSource = code
+      ? (nodes.length <= 1 && code === visibleCode ? "visible_label" : "structured_sku")
+      : "none";
     return {
       title: decodeHtml(String(p.name || h1 || metaTitle).replace(/\s*[|｜].*$/, "")).trim(),
       price: offers.price != null ? String(offers.price) : (metaPrice || ""),
@@ -165,9 +168,12 @@ function parseProducts(url, html) {
       image: typeof image === "string" && image ? image : metaImage,
       url,
       itemCode: code || (nodes.length <= 1 ? visibleCode : ""),
+      itemCodeSource,
+      codeStatus: itemCodeSource === "visible_label" ? "normal" : itemCodeSource === "structured_sku" ? "review" : "blocked",
       source: "Francfranc公式商品ページ",
       checkedAt: new Date().toISOString(),
-      verifiedCode: /^\d{13}$/.test(code || visibleCode),
+      // This indicates extraction from the visible official label, not certification of the site's registration.
+      verifiedCode: itemCodeSource === "visible_label",
     };
   }).filter(p => p.title || p.itemCode || p.image);
 }
