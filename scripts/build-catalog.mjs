@@ -203,7 +203,7 @@ function parseProducts(url, html) {
     const detectedCodeSource = detectedCode ? "visible_label" : (visibleCodeAmbiguous ? "ambiguous_visible_labels" : "none");
     // Keep the URL number only for diagnostics; it never replaces the visible 品番.
     const urlItemCode = url.match(/\/products\/(\d{13})(?:$|[/?#])/i)?.[1] || "";
-    const urlCodeMismatch = Boolean(detectedCode && visibleCodeCandidates.length && !visibleCodeCandidates.includes(detectedCode));
+    const urlCodeMismatch = Boolean(detectedCode && urlItemCode && detectedCode !== urlItemCode);
     const itemCode = detectedCode;
     const itemCodeSource = detectedCodeSource;
     return {
@@ -271,16 +271,19 @@ if (!urls.length) {
     found: products.length,
     uniqueProductPagesFound: new Set(products.map(p => p.url)).size,
     officialUrlCodeCount: products.filter(p => p.itemCodeSource === "official_url").length,
-    visibleLabelMismatchCount: products.filter(p => p.urlCodeMismatch).length,
+    // Count mismatching pages once, even if JSON-LD exposes multiple Product records.
+    visibleLabelMismatchCount: new Set(products.filter(p => p.urlCodeMismatch).map(p => p.url)).size,
+    urlCodeMismatchProductCount: products.filter(p => p.urlCodeMismatch).length,
     missingCodeCount: products.filter(p => !p.itemCode).length,
     invalidCheckDigitCount: products.filter(p => p.itemCode && !hasValidEan13CheckDigit(p.itemCode)).length,
-    urlCodeMismatchCount: products.filter(p => p.urlCodeMismatch).length,
+    // Compare the extracted visible 品番 against the URL slug; URL is diagnostic only.
+    urlCodeMismatchCount: new Set(products.filter(p => p.urlCodeMismatch).map(p => p.url)).size,
     ambiguousVisibleLabelCount: products.filter(p => p.codeStatus === "blocked" && p.itemCodeSource === "ambiguous_visible_labels").length,
     fetchFailed: failed.length,
     noProductData: noProductData.length,
     failed,
     noProductDataUrls: noProductData,
-    note: "The 13-digit number in the official product URL is used as the item code under the agreed assumption. Visible 品番/SKU differences are logged for review and do not override the URL code. Invalid EAN-13 check digits remain blocked.",
+    note: "The single 13-digit 品番 visibly displayed on the official product page is the item code. URL-slug differences are counted for diagnostics only and never replace the visible 品番. Missing or ambiguous visible labels and invalid EAN-13 check digits remain blocked.",
     products,
   };
   await writeFile("catalog.json", JSON.stringify(output, null, 2) + "\n", "utf8");
