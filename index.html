@@ -208,7 +208,7 @@ function getCodeStatus(p){
 }
 function codeWarningText(p){
   const status=getCodeStatus(p);
-  if(p?.urlCodeMismatch)return '参考：公式ページ内の表示品番/SKUとURL番号が異なります。今回は公式商品ページURLの13桁番号を採用しています。';
+  if(p?.urlCodeMismatch)return '確認情報：URLの番号と異なりますが、公式商品ページに表示された「品番」の13桁を採用しています。';
   if(status==='blocked')return '⚠ 品番を確認できません。公式ページまたは現物で確認するまでバーコードは使用しないでください。';
   if(status==='review')return '⚠ 品番の取得元を要確認。公式ページの品番と商品が一致するか確認してください。';
   return '';
