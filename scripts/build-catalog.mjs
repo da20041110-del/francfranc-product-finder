@@ -155,6 +155,43 @@ function extractItemCode(html, product, allowVisibleCode = true) {
   return /^\d{13}$/.test(sku) ? sku : "";
 }
 
+function diagnoseCodeMismatch(url, html, product) {
+  const urlCode = url.match(/\\/products\\/(\\d{13})(?:$|[/?#])/i)?.[1] || "";
+  const code = product?.detectedItemCode || "";
+  const occurrences = [];
+  const patterns = [/品番/g, /\\b\\d{13}\\b/g];
+  for (const pattern of patterns) {
+    for (const match of html.matchAll(pattern)) {
+      const start = Math.max(0, match.index - 220);
+      const end = Math.min(html.length, match.index + match[0].length + 220);
+      occurrences.push({
+        kind: pattern.source === "品番" ? "label_context" : "13_digit_context",
+        matched: match[0],
+        snippet: html.slice(start, end).replace(/\\s+/g, " ").slice(0, 480),
+      });
+      if (occurrences.length >= 12) break;
+    }
+    if (occurrences.length >= 12) break;
+  }
+  const structured = getJsonLdProducts(html).slice(0, 8).map((node) => ({
+    name: node.name || "",
+    sku: node.sku || "",
+    mpn: node.mpn || "",
+    productID: node.productID || "",
+    description: String(node.description || "").slice(0, 500),
+  }));
+  return {
+    url,
+    urlItemCode: urlCode,
+    detectedItemCode: code,
+    title: product?.title || "",
+    itemCodeSource: product?.itemCodeSource || "",
+    htmlLength: html.length,
+    occurrences,
+    structured,
+  };
+}
+
 function parseProducts(url, html) {
   const nodes = getJsonLdProducts(html);
   const visibleCodeCandidates = extractVisibleItemCodes(html);
@@ -219,6 +256,9 @@ if (!urls.length) {
       try {
         const html = await getText(url);
         const parsed = parseProducts(url, html);
+        for (const product of parsed.filter((item) => item.codeStatus === "blocked_url_mismatch")) {
+          console.warn("JAN_MISMATCH_DIAGNOSTIC " + JSON.stringify(diagnoseCodeMismatch(url, html, product)));
+        }
         if (parsed.length) {
           products.push(...parsed);
           console.log(`${completed + 1}/${selected.length} found: ${parsed[0].title || url} (${parsed.length} record(s))`);
