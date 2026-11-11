@@ -142,11 +142,10 @@ function hasValidEan13CheckDigit(code) {
   return (10 - (sum % 10)) % 10 === digits[12];
 }
 
-function extractItemCode(url) {
-  // Per the agreed operating assumption, the 13-digit official product-page
-  // URL number is the authoritative item code. Visible labels and SKU remain
-  // diagnostic cross-checks only.
-  return url.match(/\/products\/(\d{13})(?:$|[/?#])/i)?.[1] || "";
+function extractItemCode(html) {
+  // The user-confirmed source of truth is the single 13-digit 品番 visibly
+  // displayed on the official product page. Do not substitute the URL slug.
+  return extractVisibleItemCode(html);
 }
 
 function diagnoseCodeMismatch(url, html, product) {
@@ -190,7 +189,7 @@ function parseProducts(url, html) {
   const nodes = getJsonLdProducts(html);
   const visibleCodeCandidates = extractVisibleItemCodes(html);
   const visibleCodeAmbiguous = visibleCodeCandidates.length > 1;
-  const visibleCode = nodes.length <= 1 && !visibleCodeAmbiguous ? extractVisibleItemCode(html) : "";
+  const visibleCode = !visibleCodeAmbiguous ? extractVisibleItemCode(html) : "";
   const usableNodes = nodes.length ? nodes : [{}];
   const metaTitle = getMeta(html, "og:title") || getMeta(html, "twitter:title");
   const h1 = decodeHtml(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1]?.replace(/<[^>]+>/g, " ") || "").trim();
@@ -200,11 +199,10 @@ function parseProducts(url, html) {
     const offers = Array.isArray(p.offers) ? p.offers[0] : (p.offers || {});
     const rawImage = Array.isArray(p.image) ? p.image[0] : p.image;
     const image = typeof rawImage === "object" ? (rawImage?.url || rawImage?.contentUrl || "") : rawImage;
-    const detectedCode = visibleCodeAmbiguous ? "" : extractItemCode(url);
-    const detectedCodeSource = detectedCode ? "official_url" : (visibleCodeAmbiguous ? "ambiguous_visible_labels" : "none");
-    // The official product URL is authoritative under the agreed assumption.
-    // Visible label/SKU disagreement is retained as a diagnostic warning only.
-    const urlItemCode = detectedCode;
+    const detectedCode = visibleCodeAmbiguous ? "" : extractItemCode(html);
+    const detectedCodeSource = detectedCode ? "visible_label" : (visibleCodeAmbiguous ? "ambiguous_visible_labels" : "none");
+    // Keep the URL number only for diagnostics; it never replaces the visible 品番.
+    const urlItemCode = url.match(/\/products\/(\d{13})(?:$|[/?#])/i)?.[1] || "";
     const urlCodeMismatch = Boolean(detectedCode && visibleCodeCandidates.length && !visibleCodeCandidates.includes(detectedCode));
     const itemCode = detectedCode;
     const itemCodeSource = detectedCodeSource;
@@ -224,7 +222,7 @@ function parseProducts(url, html) {
       source: "Francfranc公式商品ページ",
       checkedAt: new Date().toISOString(),
       // This indicates extraction from the visible official label, not certification of the site's registration.
-      verifiedCode: itemCodeSource === "official_url" && Boolean(itemCode) && hasValidEan13CheckDigit(itemCode),
+      verifiedCode: itemCodeSource === "visible_label" && Boolean(itemCode) && hasValidEan13CheckDigit(itemCode),
     };
   }).filter(p => p.title || p.itemCode || p.image);
 }
