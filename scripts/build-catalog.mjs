@@ -169,20 +169,30 @@ function parseProducts(url, html) {
     const offers = Array.isArray(p.offers) ? p.offers[0] : (p.offers || {});
     const rawImage = Array.isArray(p.image) ? p.image[0] : p.image;
     const image = typeof rawImage === "object" ? (rawImage?.url || rawImage?.contentUrl || "") : rawImage;
-    const code = visibleCodeAmbiguous ? "" : extractItemCode(html, p, nodes.length <= 1);
-    const itemCodeSource = code
-      ? (nodes.length <= 1 && code === visibleCode ? "visible_label" : "structured_sku")
+    const detectedCode = visibleCodeAmbiguous ? "" : extractItemCode(html, p, nodes.length <= 1);
+    const detectedCodeSource = detectedCode
+      ? (nodes.length <= 1 && detectedCode === visibleCode ? "visible_label" : "structured_sku")
       : (visibleCodeAmbiguous ? "ambiguous_visible_labels" : "none");
+    // Cross-check the extracted code against the product-specific URL slug.
+    // A mismatch is not proof that the URL is authoritative. It is a warning
+    // that hidden variant markup may have supplied another item's code.
+    // Fail closed: retain the candidate for audit, but do not expose it as a barcode.
+    const urlItemCode = url.match(/\/products\/(\d{13})(?:$|[/?#])/i)?.[1] || "";
+    const urlCodeMismatch = Boolean(detectedCode && urlItemCode && detectedCode !== urlItemCode);
+    const itemCode = urlCodeMismatch ? "" : (detectedCode || (nodes.length <= 1 ? visibleCode : ""));
+    const itemCodeSource = urlCodeMismatch ? "url_mismatch" : detectedCodeSource;
     return {
       title: decodeHtml(String(p.name || h1 || metaTitle).replace(/\s*[|｜].*$/, "")).trim(),
       price: offers.price != null ? String(offers.price) : (metaPrice || ""),
       currency: offers.priceCurrency || "JPY",
       image: typeof image === "string" && image ? image : metaImage,
       url,
-      itemCode: code || (nodes.length <= 1 ? visibleCode : ""),
+      urlItemCode,
+      itemCode,
+      detectedItemCode: detectedCode,
       itemCodeSource,
       visibleCodeCandidates,
-      codeStatus: itemCodeSource === "visible_label" ? "normal" : itemCodeSource === "structured_sku" ? "review" : "blocked",
+      codeStatus: urlCodeMismatch ? "blocked_url_mismatch" : itemCodeSource === "visible_label" ? "normal" : itemCodeSource === "structured_sku" ? "review" : "blocked",
       source: "Francfranc公式商品ページ",
       checkedAt: new Date().toISOString(),
       // This indicates extraction from the visible official label, not certification of the site's registration.
@@ -235,11 +245,13 @@ if (!urls.length) {
     structuredSkuCodeCount: products.filter(p => p.itemCodeSource === "structured_sku").length,
     missingCodeCount: products.filter(p => !p.itemCode).length,
     invalidCheckDigitCount: products.filter(p => p.itemCode && !hasValidEan13CheckDigit(p.itemCode)).length,
+    urlCodeMismatchCount: products.filter(p => p.codeStatus === "blocked_url_mismatch").length,
+    ambiguousVisibleLabelCount: products.filter(p => p.codeStatus === "blocked" && p.itemCodeSource === "ambiguous_visible_labels").length,
     fetchFailed: failed.length,
     noProductData: noProductData.length,
     failed,
     noProductDataUrls: noProductData,
-    note: "Item codes are populated only from official visible 品番 or structured 13-digit SKU. URL slugs are never used as JAN.",
+    note: "Extracted item codes are withheld when they conflict with the product-specific URL code. URL slugs are used only as a discrepancy check, never as a replacement JAN.",
     products,
   };
   await writeFile("catalog.json", JSON.stringify(output, null, 2) + "\n", "utf8");
