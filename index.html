@@ -208,7 +208,7 @@ function getCodeStatus(p){
 }
 function codeWarningText(p){
   const status=getCodeStatus(p);
-  if(p?.codeStatus==='blocked_url_mismatch')return '⚠ 公式ページのURL内の商品番号と取得した品番が一致しません。品番の不一致が解消するまでバーコードは表示しません。公式ページと現物を確認してください。';
+  if(p?.urlCodeMismatch)return '参考：公式ページ内の表示品番/SKUとURL番号が異なります。今回は公式商品ページURLの13桁番号を採用しています。';
   if(status==='blocked')return '⚠ 品番を確認できません。公式ページまたは現物で確認するまでバーコードは使用しないでください。';
   if(status==='review')return '⚠ 品番の取得元を要確認。公式ページの品番と商品が一致するか確認してください。';
   return '';
@@ -390,7 +390,7 @@ function selectProduct(p,card){
     jan.dispatchEvent(new Event('input'));
     barcodeStatus.textContent=codeStatus==='review'
       ? '要確認：番号は取得できていますが、取得元の確実性が十分ではありません。公式ページの品番と商品を照合してください。'
-      : '公式ページの品番欄から取得しました。公式ページの登録内容自体が正しいことまでは保証されないため、商品との一致を確認してください。';
+      : '公式商品ページURLの13桁番号を採用しました。商品名・画像と現物が一致することを確認してください。';
   }else{
     jan.value='';
     jan.dispatchEvent(new Event('input'));
