@@ -70,7 +70,9 @@ async function check(){
     $('visibleLabelCodes').textContent=(catalog.visibleLabelCodeCount??'集計なし')+' 件';
     $('structuredSkuCodes').textContent=(catalog.structuredSkuCodeCount??'集計なし')+' 件';
     $('invalidCheckDigits').textContent=(catalog.invalidCheckDigitCount??'集計なし')+' 件';
-    const issues=(catalog.fetchFailed||0)+(catalog.noProductData||0);
+    $('urlCodeMismatches').textContent=(catalog.urlCodeMismatchCount??'集計なし')+' 件';
+    $('ambiguousCodes').textContent=(catalog.ambiguousVisibleLabelCount??'集計なし')+' 件';
+    const issues=(catalog.fetchFailed||0)+(catalog.noProductData||0)+(catalog.urlCodeMismatchCount||0)+(catalog.ambiguousVisibleLabelCount||0)+(catalog.missingCodeCount||0)+(catalog.invalidCheckDigitCount||0);
     setState('catalogState',issues?'読み込み成功・要確認':'読み込み成功',issues?'warn':'ok');
   }catch(e){setState('catalogState','読み込み失敗','error');$('generatedAt').textContent='取得できません';$('productCount').textContent='取得できません';$('imageCount').textContent='取得できません';$('codeCount').textContent='取得できません';$('attempted').textContent='取得できません';$('fetchFailed').textContent='取得できません';$('noProductData').textContent='取得できません';$('missingImage').textContent='取得できません';$('missingCode').textContent='取得できません';$('visibleLabelCodes').textContent='取得できません';$('structuredSkuCodes').textContent='取得できません';$('invalidCheckDigits').textContent='取得できません';$('urlCodeMismatches').textContent='取得できません';$('ambiguousCodes').textContent='取得できません';}
   try{
