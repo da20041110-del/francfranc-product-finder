@@ -165,6 +165,7 @@ clearAppButton.addEventListener('click',()=>{
   catalogResults.style.display='none';
   catalogStatus.textContent='商品名・品番を入力すると候補が表示されます。写真から探す場合は、上の「商品を検索する」を使ってください。';
   document.getElementById('jan').value='';
+  document.getElementById('jan').disabled=false;
   document.getElementById('barcodeCard').style.display='none';
   document.getElementById('barcode').innerHTML='';
   document.getElementById('barcodeStatus').textContent='品番を入力すると、チェックデジットを確認してバーコードを表示します。';
@@ -207,6 +208,7 @@ function getCodeStatus(p){
 }
 function codeWarningText(p){
   const status=getCodeStatus(p);
+  if(p?.codeStatus==='blocked_url_mismatch')return '⚠ 公式ページのURL内の商品番号と取得した品番が一致しません。品番の不一致が解消するまでバーコードは表示しません。公式ページと現物を確認してください。';
   if(status==='blocked')return '⚠ 品番を確認できません。公式ページまたは現物で確認するまでバーコードは使用しないでください。';
   if(status==='review')return '⚠ 品番の取得元を要確認。公式ページの品番と商品が一致するか確認してください。';
   return '';
@@ -374,6 +376,7 @@ function selectProduct(p,card){
     barcodeCard.insertBefore(codeWarning,barcodeCard.querySelector('label[for="jan"]'));
   }
   const codeStatus=getCodeStatus(p);
+  jan.disabled=codeStatus==='blocked';
   codeWarning.hidden=codeStatus==='normal';
   codeWarning.textContent=codeWarningText(p);
   codeWarning.style.cssText='padding:10px 12px;border-radius:8px;font-size:14px;font-weight:600;background:'+(codeStatus==='blocked'?'#fde8e7':'#fff1d6')+';color:'+(codeStatus==='blocked'?'#9b2420':'#805500');
@@ -391,7 +394,9 @@ function selectProduct(p,card){
   }else{
     jan.value='';
     jan.dispatchEvent(new Event('input'));
-    barcodeStatus.textContent='この候補から13桁の品番を取得できませんでした。公式商品ページで確認してください。';
+    barcodeStatus.textContent=codeStatus==='blocked'
+      ? '安全確認のため、この商品のバーコード生成・手入力を停止しています。公式商品ページと現物で品番を確認してください。'
+      : 'この候補から13桁の品番を取得できませんでした。公式商品ページで確認してください。';
   }
   if(card){
     const btn=card.querySelector('.chooseProduct');
@@ -816,7 +821,7 @@ search.addEventListener('click',async()=>{
       card.className='card';
       card.style.marginTop='12px';
       const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
-      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>';
+      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p>'+codeStatusHtml(p)+'<p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">商品を選択して確認</button>';
       if(p.image){
         const img=document.createElement('img');
         img.src=p.image;img.alt=p.title||'商品画像';img.loading='eager';
