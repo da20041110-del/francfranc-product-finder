@@ -156,10 +156,10 @@ function extractItemCode(html, product, allowVisibleCode = true) {
 }
 
 function diagnoseCodeMismatch(url, html, product) {
-  const urlCode = url.match(/\\/products\\/(\\d{13})(?:$|[/?#])/i)?.[1] || "";
+  const urlCode = url.match(/\/products\/(\d{13})(?:$|[/?#])/i)?.[1] || "";
   const code = product?.detectedItemCode || "";
   const occurrences = [];
-  const patterns = [/品番/g, /\\b\\d{13}\\b/g];
+  const patterns = [/品番/g, /\b\d{13}\b/g];
   for (const pattern of patterns) {
     for (const match of html.matchAll(pattern)) {
       const start = Math.max(0, match.index - 220);
@@ -167,7 +167,7 @@ function diagnoseCodeMismatch(url, html, product) {
       occurrences.push({
         kind: pattern.source === "品番" ? "label_context" : "13_digit_context",
         matched: match[0],
-        snippet: html.slice(start, end).replace(/\\s+/g, " ").slice(0, 480),
+        snippet: html.slice(start, end).replace(/\s+/g, " ").slice(0, 480),
       });
       if (occurrences.length >= 12) break;
     }
