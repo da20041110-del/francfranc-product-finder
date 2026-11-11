@@ -5,6 +5,8 @@ on:
   push:
     paths:
       - 'scripts/build-catalog.mjs'
+      - 'index.html'
+      - 'status-check.html'
       - '.github/workflows/build-catalog-test.yml'
   workflow_dispatch:
     inputs:
