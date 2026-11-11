@@ -142,17 +142,11 @@ function hasValidEan13CheckDigit(code) {
   return (10 - (sum % 10)) % 10 === digits[12];
 }
 
-function extractItemCode(html, product, allowVisibleCode = true) {
-  // The visible official "品番" is the primary POS source. For a page with
-  // multiple Product variants, do not reuse one visible code for every variant.
-  if (allowVisibleCode) {
-    const visibleCode = extractVisibleItemCode(html);
-    if (/^\d{13}$/.test(visibleCode)) return visibleCode;
-  }
-  // Structured SKU/MPN is a secondary source when the visible page label
-  // cannot be extracted. Never use the product URL slug as a code.
-  const sku = String(product?.sku || product?.mpn || "");
-  return /^\d{13}$/.test(sku) ? sku : "";
+function extractItemCode(url) {
+  // Per the agreed operating assumption, the 13-digit official product-page
+  // URL number is the authoritative item code. Visible labels and SKU remain
+  // diagnostic cross-checks only.
+  return url.match(/\/products\/(\d{13})(?:$|[/?#])/i)?.[1] || "";
 }
 
 function diagnoseCodeMismatch(url, html, product) {
@@ -206,18 +200,14 @@ function parseProducts(url, html) {
     const offers = Array.isArray(p.offers) ? p.offers[0] : (p.offers || {});
     const rawImage = Array.isArray(p.image) ? p.image[0] : p.image;
     const image = typeof rawImage === "object" ? (rawImage?.url || rawImage?.contentUrl || "") : rawImage;
-    const detectedCode = visibleCodeAmbiguous ? "" : extractItemCode(html, p, nodes.length <= 1);
-    const detectedCodeSource = detectedCode
-      ? (nodes.length <= 1 && detectedCode === visibleCode ? "visible_label" : "structured_sku")
-      : (visibleCodeAmbiguous ? "ambiguous_visible_labels" : "none");
-    // Cross-check the extracted code against the product-specific URL slug.
-    // A mismatch is not proof that the URL is authoritative. It is a warning
-    // that hidden variant markup may have supplied another item's code.
-    // Fail closed: retain the candidate for audit, but do not expose it as a barcode.
-    const urlItemCode = url.match(/\/products\/(\d{13})(?:$|[/?#])/i)?.[1] || "";
-    const urlCodeMismatch = Boolean(detectedCode && urlItemCode && detectedCode !== urlItemCode);
-    const itemCode = urlCodeMismatch ? "" : (detectedCode || (nodes.length <= 1 ? visibleCode : ""));
-    const itemCodeSource = urlCodeMismatch ? "url_mismatch" : detectedCodeSource;
+    const detectedCode = visibleCodeAmbiguous ? "" : extractItemCode(url);
+    const detectedCodeSource = detectedCode ? "official_url" : (visibleCodeAmbiguous ? "ambiguous_visible_labels" : "none");
+    // The official product URL is authoritative under the agreed assumption.
+    // Visible label/SKU disagreement is retained as a diagnostic warning only.
+    const urlItemCode = detectedCode;
+    const urlCodeMismatch = Boolean(detectedCode && visibleCodeCandidates.length && !visibleCodeCandidates.includes(detectedCode));
+    const itemCode = detectedCode;
+    const itemCodeSource = detectedCodeSource;
     return {
       title: decodeHtml(String(p.name || h1 || metaTitle).replace(/\s*[|｜].*$/, "")).trim(),
       price: offers.price != null ? String(offers.price) : (metaPrice || ""),
@@ -229,11 +219,12 @@ function parseProducts(url, html) {
       detectedItemCode: detectedCode,
       itemCodeSource,
       visibleCodeCandidates,
-      codeStatus: urlCodeMismatch ? "blocked_url_mismatch" : itemCodeSource === "visible_label" ? "normal" : itemCodeSource === "structured_sku" ? "review" : "blocked",
+      codeStatus: itemCode && hasValidEan13CheckDigit(itemCode) ? "normal" : "blocked",
+      urlCodeMismatch,
       source: "Francfranc公式商品ページ",
       checkedAt: new Date().toISOString(),
       // This indicates extraction from the visible official label, not certification of the site's registration.
-      verifiedCode: itemCodeSource === "visible_label",
+      verifiedCode: itemCodeSource === "official_url" && Boolean(itemCode) && hasValidEan13CheckDigit(itemCode),
     };
   }).filter(p => p.title || p.itemCode || p.image);
 }
@@ -256,7 +247,7 @@ if (!urls.length) {
       try {
         const html = await getText(url);
         const parsed = parseProducts(url, html);
-        for (const product of parsed.filter((item) => item.codeStatus === "blocked_url_mismatch")) {
+        for (const product of parsed.filter((item) => item.urlCodeMismatch)) {
           console.warn("JAN_MISMATCH_DIAGNOSTIC " + JSON.stringify(diagnoseCodeMismatch(url, html, product)));
         }
         if (parsed.length) {
@@ -281,17 +272,17 @@ if (!urls.length) {
     attempted: selected.length,
     found: products.length,
     uniqueProductPagesFound: new Set(products.map(p => p.url)).size,
-    visibleLabelCodeCount: products.filter(p => p.itemCodeSource === "visible_label").length,
-    structuredSkuCodeCount: products.filter(p => p.itemCodeSource === "structured_sku").length,
+    officialUrlCodeCount: products.filter(p => p.itemCodeSource === "official_url").length,
+    visibleLabelMismatchCount: products.filter(p => p.urlCodeMismatch).length,
     missingCodeCount: products.filter(p => !p.itemCode).length,
     invalidCheckDigitCount: products.filter(p => p.itemCode && !hasValidEan13CheckDigit(p.itemCode)).length,
-    urlCodeMismatchCount: products.filter(p => p.codeStatus === "blocked_url_mismatch").length,
+    urlCodeMismatchCount: products.filter(p => p.urlCodeMismatch).length,
     ambiguousVisibleLabelCount: products.filter(p => p.codeStatus === "blocked" && p.itemCodeSource === "ambiguous_visible_labels").length,
     fetchFailed: failed.length,
     noProductData: noProductData.length,
     failed,
     noProductDataUrls: noProductData,
-    note: "Extracted item codes are withheld when they conflict with the product-specific URL code. URL slugs are used only as a discrepancy check, never as a replacement JAN.",
+    note: "The 13-digit number in the official product URL is used as the item code under the agreed assumption. Visible 品番/SKU differences are logged for review and do not override the URL code. Invalid EAN-13 check digits remain blocked.",
     products,
   };
   await writeFile("catalog.json", JSON.stringify(output, null, 2) + "\n", "utf8");
