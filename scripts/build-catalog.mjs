@@ -271,13 +271,13 @@ if (!urls.length) {
     found: products.length,
     uniqueProductPagesFound: new Set(products.map(p => p.url)).size,
     // Count source and safety diagnostics by unique official product page, not Product JSON-LD nodes.
-    visibleLabelCodeCount: new Set(products.filter(p => p.itemCodeSource === "visible_label" && /^\\d{13}$/.test(p.itemCode || "")).map(p => p.url)).size,
+    visibleLabelCodeCount: new Set(products.filter(p => p.itemCodeSource === "visible_label" && /^\d{13}$/.test(p.itemCode || "")).map(p => p.url)).size,
     structuredSkuCodeCount: new Set(products.filter(p => p.itemCodeSource === "structured_sku").map(p => p.url)).size,
     // URL mismatch is informational only. It never changes codeStatus or barcode eligibility.
     visibleLabelMismatchCount: new Set(products.filter(p => p.urlCodeMismatch).map(p => p.url)).size,
     urlCodeMismatchProductCount: products.filter(p => p.urlCodeMismatch).length,
     urlCodeMismatchCount: new Set(products.filter(p => p.urlCodeMismatch).map(p => p.url)).size,
-    missingCodeCount: new Set(products.filter(p => !/^\\d{13}$/.test(p.itemCode || "")).map(p => p.url)).size,
+    missingCodeCount: new Set(products.filter(p => !/^\d{13}$/.test(p.itemCode || "")).map(p => p.url)).size,
     invalidCheckDigitCount: new Set(products.filter(p => p.itemCode && !hasValidEan13CheckDigit(p.itemCode)).map(p => p.url)).size,
     ambiguousVisibleLabelCount: new Set(products.filter(p => p.itemCodeSource === "ambiguous_visible_labels").map(p => p.url)).size,
     fetchFailed: failed.length,
