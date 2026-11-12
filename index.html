@@ -165,6 +165,7 @@ clearAppButton.addEventListener('click',()=>{
   catalogResults.style.display='none';
   catalogStatus.textContent='商品名・品番を入力すると候補が表示されます。写真から探す場合は、上の「商品を検索する」を使ってください。';
   document.getElementById('jan').value='';
+  document.getElementById('jan').disabled=false;
   document.getElementById('barcodeCard').style.display='none';
   document.getElementById('barcode').innerHTML='';
   document.getElementById('barcodeStatus').textContent='品番を入力すると、チェックデジットを確認してバーコードを表示します。';
@@ -191,11 +192,32 @@ document.getElementById('clearCategories').addEventListener('click',()=>{
 categoryChoices.forEach(el=>el.addEventListener('change',renderCatalog));
 function getSelectedCategories(){const selected=categoryChoices.filter(el=>el.checked).map(el=>el.value);return selected.length?selected:categoryChoices.map(el=>el.value);}
 function getProductCode(p){
-  const explicit=String(p?.itemCode||'').replace(/\D/g,'');
-  if(/^\d{13}$/.test(explicit))return explicit;
-  // Use the official product URL's 13-digit slug when the page omits its code.
-  const match=String(p?.url||'').match(/\/products\/(\d{13})(?:[/?#]|$)/);
-  return match?match[1]:explicit;
+  // The only accepted source is the 13-digit 品番 displayed on the official product page.
+  // Never normalize, infer, or fall back to a URL slug or structured SKU.
+  const explicit=String(p?.itemCode||'');
+  return /^\d{13}$/.test(explicit)?explicit:'';
+}
+function getCodeStatus(p){
+  const code=getProductCode(p);
+  if(!code)return 'blocked';
+  if(typeof validJan==='function'&&!validJan(code))return 'blocked';
+  // A 13-digit value is usable only when it came from the official page's 品番 label.
+  if(p?.itemCodeSource!=='visible_label')return 'blocked';
+  return 'normal';
+}
+function codeWarningText(p){
+  const status=getCodeStatus(p);
+  if(status==='blocked')return '⚠ 公式ページの「品番」欄から使用可能な13桁を確認できません。バーコードは発行できません。';
+  if(p?.urlCodeMismatch)return '確認情報：URLの番号と異なりますが、公式商品ページに表示された「品番」の13桁を採用しています。';
+  if(status==='review')return '⚠ 品番の取得元を要確認。公式ページの品番と商品が一致するか確認してください。';
+  return '';
+}
+function codeStatusHtml(p){
+  const status=getCodeStatus(p);
+  if(status==='normal'&&!p?.urlCodeMismatch)return '';
+  const message=codeWarningText(p);
+  const blocked=status==='blocked';
+  return '<p role="alert" style="padding:9px 11px;border-radius:8px;background:'+(blocked?'#fde8e7':'#fff1d6')+';color:'+(blocked?'#9b2420':'#805500')+';font-size:13px;font-weight:600">'+escapeHtml(message)+'</p>';
 }
 function renderProgressCandidates(scored){
   const top=[...scored].sort((a,b)=>b.score-a.score).slice(0,3);
@@ -299,7 +321,7 @@ function renderCatalog(){
     return true;
   }).map(p=>{
     const title=normalizeJapaneseSearch(p.title||'');
-    const code=String(p.itemCode||'').replace(/\D/g,'');
+    const code=getProductCode(p);
     let score=0;
     if(title===q)score=100;
     else if(title.startsWith(q))score=80;
@@ -327,7 +349,7 @@ function renderCatalog(){
     const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
     const productCode=getProductCode(p);
     const code=productCode?escapeHtml(productCode):'品番未取得';
-    card.innerHTML=image+'<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+code+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>';
+    card.innerHTML=image+'<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+code+'</p>'+codeStatusHtml(p)+'<p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>';
     card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
     catalogResults.appendChild(card);
   }
@@ -346,21 +368,36 @@ function selectProduct(p,card){
   const code=getProductCode(p);
   const barcodeCard=document.getElementById('barcodeCard');
   barcodeCard.style.display='block';
+  let codeWarning=document.getElementById('selectedCodeWarning');
+  if(!codeWarning){
+    codeWarning=document.createElement('p');
+    codeWarning.id='selectedCodeWarning';
+    codeWarning.setAttribute('role','alert');
+    barcodeCard.insertBefore(codeWarning,barcodeCard.querySelector('label[for="jan"]'));
+  }
+  const codeStatus=getCodeStatus(p);
+  jan.disabled=codeStatus!=='normal';
+  codeWarning.hidden=codeStatus==='normal'&&!p?.urlCodeMismatch;
+  codeWarning.textContent=codeWarningText(p);
+  const blocked=codeStatus==='blocked';
+  codeWarning.style.cssText='padding:10px 12px;border-radius:8px;font-size:14px;font-weight:600;background:'+(blocked?'#fde8e7':'#fff1d6')+';color:'+(blocked?'#9b2420':'#805500');
   const officialLink=document.getElementById('officialProductLink');
   if(officialLink){
     officialLink.href=p.url||'#';
     officialLink.hidden=!p.url;
   }
-  if(/^\d{13}$/.test(code)){
+  if(/^\d{13}$/.test(code)&&codeStatus!=='blocked'){
     jan.value=code;
     jan.dispatchEvent(new Event('input'));
-    barcodeStatus.textContent=validJan(code)
-      ? '選択した商品の品番です。商品と一致することを確認してください。'
-      : '品番は13桁ですが、チェックデジットが一致しません。公式商品ページで確認してください。';
+    barcodeStatus.textContent=codeStatus==='review'
+      ? '公式商品ページの「品番」欄から取得した13桁を採用しました。商品名・画像と現物が一致することを確認してください。'
+      : '公式商品ページの「品番」欄から取得した13桁を採用しました。商品名・画像と現物が一致することを確認してください。';
   }else{
     jan.value='';
     jan.dispatchEvent(new Event('input'));
-    barcodeStatus.textContent='この候補から13桁の品番を取得できませんでした。公式商品ページで確認してください。';
+    barcodeStatus.textContent=codeStatus==='blocked'
+      ? '安全確認のため、この商品のバーコード生成・手入力を停止しています。公式商品ページと現物で品番を確認してください。'
+      : 'この候補から13桁の品番を取得できませんでした。公式商品ページで確認してください。';
   }
   if(card){
     const btn=card.querySelector('.chooseProduct');
@@ -745,7 +782,7 @@ search.addEventListener('click',async()=>{
       const p=item.product;
       const card=document.createElement('article');card.className='card';card.style.marginTop='12px';
       const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
-      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>'+renderRelatedVariants(p);
+      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p>'+codeStatusHtml(p)+'<p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>'+renderRelatedVariants(p);
       const productImage=document.createElement('img');
       productImage.src=p.image;
       productImage.alt=p.title||'商品画像';
@@ -785,7 +822,7 @@ search.addEventListener('click',async()=>{
       card.className='card';
       card.style.marginTop='12px';
       const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
-      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>';
+      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p>'+codeStatusHtml(p)+'<p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">商品を選択して確認</button>';
       if(p.image){
         const img=document.createElement('img');
         img.src=p.image;img.alt=p.title||'商品画像';img.loading='eager';

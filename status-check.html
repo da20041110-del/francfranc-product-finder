@@ -21,6 +21,15 @@
 <div class="item"><span class="key">画像あり</span><span class="value" id="imageCount">確認中</span></div>
 <div class="item"><span class="key">品番あり</span><span class="value" id="codeCount">確認中</span></div>
 <div class="item"><span class="key">取得対象URL数</span><span class="value" id="attempted">確認中</span></div>
+<div class="item"><span class="key">取得失敗</span><span class="value" id="fetchFailed">確認中</span></div>
+<div class="item"><span class="key">商品情報なし</span><span class="value" id="noProductData">確認中</span></div>
+<div class="item"><span class="key">画像未取得</span><span class="value" id="missingImage">確認中</span></div>
+<div class="item"><span class="key">品番未取得</span><span class="value" id="missingCode">確認中</span></div>
+<div class="item"><span class="key">公式品番欄から取得</span><span class="value" id="visibleLabelCodes">確認中</span></div>
+<div class="item"><span class="key">SKUから補完・要確認</span><span class="value" id="structuredSkuCodes">確認中</span></div>
+<div class="item"><span class="key">チェックデジット不一致</span><span class="value" id="invalidCheckDigits">確認中</span></div>
+ <div class="item"><span class="key">URLと品番の不一致（診断のみ）</span><span class="value" id="urlCodeMismatches">確認中</span></div>
+ <div class="item"><span class="key">複数候補で判定保留</span><span class="value" id="ambiguousCodes">確認中</span></div>
 </section>
 <section class="panel">
 <h2>事前解析データ</h2>
@@ -41,7 +50,7 @@
 const $=id=>document.getElementById(id);
 function setState(id,text,kind){const el=$(id);el.textContent=text;el.className='status'+(kind?' '+kind:'');}
 async function check(){
-  $('generatedAt').textContent='確認中';$('productCount').textContent='確認中';$('imageCount').textContent='確認中';$('codeCount').textContent='確認中';$('attempted').textContent='確認中';$('featureCount').textContent='確認中';$('dateMatch').textContent='確認中';
+  $('generatedAt').textContent='確認中';$('productCount').textContent='確認中';$('imageCount').textContent='確認中';$('codeCount').textContent='確認中';$('attempted').textContent='確認中';$('fetchFailed').textContent='確認中';$('noProductData').textContent='確認中';$('missingImage').textContent='確認中';$('missingCode').textContent='確認中';$('visibleLabelCodes').textContent='確認中';$('structuredSkuCodes').textContent='確認中';$('invalidCheckDigits').textContent='確認中';$('urlCodeMismatches').textContent='確認中';$('ambiguousCodes').textContent='確認中';$('featureCount').textContent='確認中';$('dateMatch').textContent='確認中';
   setState('catalogState','確認中','');setState('featuresState','確認中','');
   let catalog=null,features=null;
   try{
@@ -54,8 +63,18 @@ async function check(){
     $('imageCount').textContent=products.filter(p=>p&&p.image).length.toLocaleString('ja-JP')+' 件';
     $('codeCount').textContent=products.filter(p=>p&&p.itemCode).length.toLocaleString('ja-JP')+' 件';
     $('attempted').textContent=(catalog.attempted??'記録なし')+' 件';
-    setState('catalogState','読み込み成功','ok');
-  }catch(e){setState('catalogState','読み込み失敗','error');$('generatedAt').textContent='取得できません';$('productCount').textContent='取得できません';$('imageCount').textContent='取得できません';$('codeCount').textContent='取得できません';$('attempted').textContent='取得できません';}
+    $('fetchFailed').textContent=(catalog.fetchFailed??'診断データなし')+' 件';
+    $('noProductData').textContent=(catalog.noProductData??'診断データなし')+' 件';
+    $('missingImage').textContent=products.filter(p=>!p.image).length+' 件';
+    $('missingCode').textContent=(catalog.missingCodeCount??products.filter(p=>!/^\d{13}$/.test(String(p.itemCode||''))).length)+' 件';
+    $('visibleLabelCodes').textContent=(catalog.visibleLabelCodeCount??'集計なし')+' 件';
+    $('structuredSkuCodes').textContent=(catalog.structuredSkuCodeCount??'集計なし')+' 件';
+    $('invalidCheckDigits').textContent=(catalog.invalidCheckDigitCount??'集計なし')+' 件';
+    $('urlCodeMismatches').textContent=(catalog.urlCodeMismatchCount??'集計なし')+' 件';
+    $('ambiguousCodes').textContent=(catalog.ambiguousVisibleLabelCount??'集計なし')+' 件';
+    const issues=(catalog.fetchFailed||0)+(catalog.noProductData||0)+(catalog.ambiguousVisibleLabelCount||0)+(catalog.missingCodeCount||0)+(catalog.invalidCheckDigitCount||0);
+    setState('catalogState',issues?'読み込み成功・要確認':'読み込み成功',issues?'warn':'ok');
+  }catch(e){setState('catalogState','読み込み失敗','error');$('generatedAt').textContent='取得できません';$('productCount').textContent='取得できません';$('imageCount').textContent='取得できません';$('codeCount').textContent='取得できません';$('attempted').textContent='取得できません';$('fetchFailed').textContent='取得できません';$('noProductData').textContent='取得できません';$('missingImage').textContent='取得できません';$('missingCode').textContent='取得できません';$('visibleLabelCodes').textContent='取得できません';$('structuredSkuCodes').textContent='取得できません';$('invalidCheckDigits').textContent='取得できません';$('urlCodeMismatches').textContent='取得できません';$('ambiguousCodes').textContent='取得できません';}
   try{
     const r=await fetch('./image-features.json?check='+Date.now(),{cache:'no-store'});
     if(!r.ok)throw new Error('HTTP '+r.status);

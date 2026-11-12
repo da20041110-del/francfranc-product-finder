@@ -5,6 +5,8 @@ on:
   push:
     paths:
       - 'scripts/build-catalog.mjs'
+      - 'index.html'
+      - 'status-check.html'
       - '.github/workflows/build-catalog-test.yml'
   workflow_dispatch:
     inputs:
@@ -32,7 +34,7 @@ jobs:
         run: node scripts/build-catalog.mjs --limit=${{ inputs.limit || '100' }}
       - name: Print catalog sample for verification
         run: |
-          node --input-type=module -e "import fs from 'node:fs'; const c=JSON.parse(fs.readFileSync('catalog.json','utf8')); console.log(JSON.stringify({attempted:c.attempted,found:c.found,products:c.products.map(p=>({title:p.title,price:p.price,imagePresent:Boolean(p.image),url:p.url,itemCode:p.itemCode,verifiedCode:p.verifiedCode}))},null,2))"
+          node --input-type=module -e "import fs from 'node:fs'; const c=JSON.parse(fs.readFileSync('catalog.json','utf8')); const valid=s=>/^\\d{13}$/.test(s)&&((10-[...s.slice(0,12)].reduce((sum,d,i)=>sum+Number(d)*(i%2===0?1:3),0)%10)%10)===Number(s[12]); const mismatches=c.products.filter(p=>p.urlCodeMismatch); const policyErrors=mismatches.filter(p=>p.codeStatus!==(p.itemCodeSource==='visible_label'&&valid(p.itemCode)?'normal':'blocked')); const missingErrors=c.products.filter(p=>!/^\\d{13}$/.test(p.itemCode||'')&&p.codeStatus!=='blocked'); if(policyErrors.length||missingErrors.length) throw new Error('Item-code safety policy failed: '+JSON.stringify({policyErrors,missingErrors})); console.log(JSON.stringify({attempted:c.attempted,found:c.found,visibleLabelCodeCount:c.visibleLabelCodeCount,structuredSkuCodeCount:c.structuredSkuCodeCount,missingCodeCount:c.missingCodeCount,invalidCheckDigitCount:c.invalidCheckDigitCount,urlCodeMismatchCount:c.urlCodeMismatchCount,ambiguousVisibleLabelCount:c.ambiguousVisibleLabelCount,mismatchPolicyErrors:policyErrors.length,missingCodePolicyErrors:missingErrors.length,urlCodeMismatches:mismatches.map(p=>({title:p.title,url:p.url,urlItemCode:p.urlItemCode,itemCode:p.itemCode,codeStatus:p.codeStatus})),sample:c.products.slice(0,30).map(p=>({title:p.title,url:p.url,itemCode:p.itemCode,itemCodeSource:p.itemCodeSource,codeStatus:p.codeStatus}))},null,2))"
       - name: Save catalog as a downloadable artifact
         uses: actions/upload-artifact@v4
         with:
