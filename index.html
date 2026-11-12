@@ -192,19 +192,18 @@ document.getElementById('clearCategories').addEventListener('click',()=>{
 categoryChoices.forEach(el=>el.addEventListener('change',renderCatalog));
 function getSelectedCategories(){const selected=categoryChoices.filter(el=>el.checked).map(el=>el.value);return selected.length?selected:categoryChoices.map(el=>el.value);}
 function getProductCode(p){
-  // Only use a code explicitly extracted from the official page or structured SKU.
-  // A product URL can identify a parent/series page, not a sellable JAN.
-  const explicit=String(p?.itemCode||'').replace(/\D/g,'');
+  // The only accepted source is the 13-digit 品番 displayed on the official product page.
+  // Never normalize, infer, or fall back to a URL slug or structured SKU.
+  const explicit=String(p?.itemCode||'');
   return /^\d{13}$/.test(explicit)?explicit:'';
 }
 function getCodeStatus(p){
   const code=getProductCode(p);
   if(!code)return 'blocked';
   if(typeof validJan==='function'&&!validJan(code))return 'blocked';
-  if(p?.codeStatus==='review'||p?.itemCodeSource==='structured_sku')return 'review';
-  if(p?.itemCodeSource==='visible_label')return 'normal';
-  // Older catalog records have no source metadata, so do not silently call them verified.
-  return 'review';
+  // A 13-digit value is usable only when it came from the official page's 品番 label.
+  if(p?.itemCodeSource!=='visible_label')return 'blocked';
+  return 'normal';
 }
 function codeWarningText(p){
   const status=getCodeStatus(p);
@@ -215,9 +214,10 @@ function codeWarningText(p){
 }
 function codeStatusHtml(p){
   const status=getCodeStatus(p);
-  if(status==='normal')return '';
+  if(status==='normal'&&!p?.urlCodeMismatch)return '';
   const message=codeWarningText(p);
-  return '<p role="alert" style="padding:9px 11px;border-radius:8px;background:'+(status==='blocked'?'#fde8e7':'#fff1d6')+';color:'+(status==='blocked'?'#9b2420':'#805500')+';font-size:13px;font-weight:600">'+escapeHtml(message)+'</p>';
+  const blocked=status==='blocked';
+  return '<p role="alert" style="padding:9px 11px;border-radius:8px;background:'+(blocked?'#fde8e7':'#fff1d6')+';color:'+(blocked?'#9b2420':'#805500')+';font-size:13px;font-weight:600">'+escapeHtml(message)+'</p>';
 }
 function renderProgressCandidates(scored){
   const top=[...scored].sort((a,b)=>b.score-a.score).slice(0,3);
@@ -376,10 +376,11 @@ function selectProduct(p,card){
     barcodeCard.insertBefore(codeWarning,barcodeCard.querySelector('label[for="jan"]'));
   }
   const codeStatus=getCodeStatus(p);
-  jan.disabled=codeStatus==='blocked';
-  codeWarning.hidden=codeStatus==='normal';
+  jan.disabled=codeStatus!=='normal';
+  codeWarning.hidden=codeStatus==='normal'&&!p?.urlCodeMismatch;
   codeWarning.textContent=codeWarningText(p);
-  codeWarning.style.cssText='padding:10px 12px;border-radius:8px;font-size:14px;font-weight:600;background:'+(codeStatus==='blocked'?'#fde8e7':'#fff1d6')+';color:'+(codeStatus==='blocked'?'#9b2420':'#805500');
+  const blocked=codeStatus==='blocked';
+  codeWarning.style.cssText='padding:10px 12px;border-radius:8px;font-size:14px;font-weight:600;background:'+(blocked?'#fde8e7':'#fff1d6')+';color:'+(blocked?'#9b2420':'#805500');
   const officialLink=document.getElementById('officialProductLink');
   if(officialLink){
     officialLink.href=p.url||'#';
@@ -389,8 +390,8 @@ function selectProduct(p,card){
     jan.value=code;
     jan.dispatchEvent(new Event('input'));
     barcodeStatus.textContent=codeStatus==='review'
-      ? '要確認：番号は取得できていますが、取得元の確実性が十分ではありません。公式ページの品番と商品を照合してください。'
-      : '公式商品ページURLの13桁番号を採用しました。商品名・画像と現物が一致することを確認してください。';
+      ? '公式商品ページの「品番」欄から取得した13桁を採用しました。商品名・画像と現物が一致することを確認してください。'
+      : '公式商品ページの「品番」欄から取得した13桁を採用しました。商品名・画像と現物が一致することを確認してください。';
   }else{
     jan.value='';
     jan.dispatchEvent(new Event('input'));
