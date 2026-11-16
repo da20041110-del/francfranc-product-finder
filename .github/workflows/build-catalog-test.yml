@@ -30,6 +30,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Verify catalog parser safety rules
+        run: node scripts/build-catalog.mjs --self-test
       - name: Fetch currently listed products from the official site
         run: node scripts/build-catalog.mjs --limit=${{ inputs.limit || '100' }}
       - name: Print catalog sample for verification
