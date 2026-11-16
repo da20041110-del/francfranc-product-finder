@@ -273,22 +273,15 @@ function renderRelatedVariants(product){
   const key=getSeriesKey(product.title||'');
   const productCode=String(getProductCode(product)||'').replace(/\D/g,'');
   if(key.length<4 && productCode.length<8)return '';
-  // Prioritize items sharing the same 11-digit product-code stem. This is the
-  // strongest catalog signal for a color/finish variation and prevents loosely
-  // similar titles from pushing true color variants out of the first slots.
-  let related=[];
-  if(productCode.length===13){
-    const prefix=productCode.slice(0,11);
-    related=catalogProducts.filter(p=>{
-      const code=String(getProductCode(p)||'').replace(/\D/g,'');
-      return p.url!==product.url&&p.image&&code.length===13&&code.slice(0,11)===prefix;
-    });
-  }
-  // Only use normalized title matches when no same-code family is available.
-  if(!related.length){
-    related=catalogProducts.filter(p=>p.url!==product.url&&p.image&&getSeriesKey(p.title||'')===key);
-  }
-  related=related.slice(0,5);
+  // Product-code prefixes are not a reliable family identifier: unrelated
+  // products can share the same JAN stem. Treat only an identical normalized
+  // product title after removing color/size words as a color/size sibling.
+  const related=catalogProducts.filter(p=>
+    p.url!==product.url &&
+    p.image &&
+    getSeriesKey(p.title||'')===key &&
+    getSeriesKey(p.title||'').length>=4
+  ).slice(0,5);
   if(!related.length)return '';
   const cards=related.map(p=>{
     const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
@@ -681,12 +674,15 @@ function renderBarcodeSearchResult(product,scannedCode){
   if(selectedPhotoFile){
     photo.hidden=false;
     photo.style.display='block';
-    if(!photo.src || !photo.complete || !photo.naturalWidth){
+    // HTMLImageElement.src resolves to the page URL even when no src
+    // attribute exists. Check the actual attribute and decoded dimensions.
+    const hasLoadedPreview=Boolean(photo.getAttribute('src'))&&photo.complete&&photo.naturalWidth>0;
+    if(!hasLoadedPreview){
       if(photo.dataset.url)URL.revokeObjectURL(photo.dataset.url);
       const previewUrl=URL.createObjectURL(selectedPhotoFile);
       photo.dataset.url=previewUrl;
       photo.onload=()=>{photo.hidden=false;photo.style.display='block';};
-      photo.onerror=()=>{photoStatus.textContent='撮影画像のプレビューを表示できませんでした。';};
+      photo.onerror=()=>{photo.hidden=false;photo.style.display='block';photoStatus.textContent='撮影画像のプレビューを表示できませんでした。';};
       photo.src=previewUrl;
     }
   }
