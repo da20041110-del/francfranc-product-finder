@@ -305,7 +305,7 @@ if (selfTest) {
   assert.equal(parsed.length, 1);
   assert.equal(parsed[0].itemCode, "1111010041132");
   assert.equal(parsed[0].imageStatus, "matched_visible_code");
-  assert.match(parsed[0].image, /1111010041132_d1\\.jpg/);
+  assert.ok(parsed[0].image.includes("1111010041132_d1.jpg"));
   assert.match(parsed[0].image, /width=1200/);
 
   const noMatchFixture = fixture.replace("1111010041132_d1.jpg?v=2&amp;width=40", "1111010041999_d1.jpg?v=2&amp;width=40");
