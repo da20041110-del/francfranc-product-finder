@@ -430,7 +430,7 @@ fetch('./catalog.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('ca
   catalogProducts=Array.isArray(data.products)?data.products:[];
   catalogDataGeneratedAt=data.generatedAt||null;
   const withImage=catalogProducts.filter(p=>p.image).length;
-  const withCode=catalogProducts.filter(p=>/^\\d{13}$/.test(getProductCode(p))).length;
+  const withCode=catalogProducts.filter(p=>/^\d{13}$/.test(getProductCode(p))).length;
   catalogStatus.textContent='カタログ取得日時：'+(data.generatedAt||'不明')+' / 取得URL '+(data.attempted??'?')+'件、商品データ '+catalogProducts.length+'件（画像 '+withImage+'件・13桁品番 '+withCode+'件）';
   renderCatalog();
 }).catch(err=>{catalogStatus.textContent='カタログを読み込めませんでした（'+(err?.message||'通信エラー')+'）。通信を確認してページを開き直してください。';}).finally(()=>clearTimeout(catalogLoadTimer));
@@ -626,13 +626,15 @@ async function getBarcodeLibrary(){
   if(!barcodeLibraryPromise){
     barcodeLibraryPromise=new Promise((resolve,reject)=>{
       const script=document.createElement('script');
+      let timeoutId;
+      const fail=error=>{clearTimeout(timeoutId);reject(error);};
       script.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
       script.async=true;
-      script.onload=()=>window.ZXing?resolve(window.ZXing):reject(new Error('バーコード読み取り機能を初期化できませんでした'));
-      script.onerror=()=>reject(new Error('バーコード読み取り機能を読み込めませんでした'));
+      script.onload=()=>{clearTimeout(timeoutId);window.ZXing?resolve(window.ZXing):reject(new Error('バーコード読み取り機能を初期化できませんでした'));};
+      script.onerror=()=>fail(new Error('バーコード読み取り機能を読み込めませんでした'));
       document.head.appendChild(script);
-      setTimeout(()=>reject(new Error('バーコード読み取り機能の読み込みがタイムアウトしました')),10000);
-    });
+      timeoutId=setTimeout(()=>fail(new Error('バーコード読み取り機能の読み込みがタイムアウトしました')),6000);
+    }).catch(error=>{barcodeLibraryPromise=null;throw error;});
   }
   return barcodeLibraryPromise;
 }
@@ -644,7 +646,7 @@ async function detectEan13FromPhoto(imageElement){
       if(supported.includes('ean_13')){
         const detector=new BarcodeDetector({formats:['ean_13']});
         const detected=await detector.detect(imageElement);
-        const value=detected.find(item=>item.format==='ean_13'&&/^\\d{13}$/.test(item.rawValue||''))?.rawValue;
+        const value=detected.find(item=>item.format==='ean_13'&&/^\d{13}$/.test(item.rawValue||''))?.rawValue;
         if(value)return value;
       }
     }catch(error){console.warn('標準バーコード読み取りを利用できませんでした。別方式で続行します。',error);}
@@ -726,7 +728,7 @@ search.addEventListener('click',async()=>{
     let barcodeNotice='';
     try{
       const scannedCode=await detectEan13FromPhoto(photo);
-      if(scannedCode&&/^\\d{13}$/.test(scannedCode)&&validJan(scannedCode)){
+      if(scannedCode&&/^\d{13}$/.test(scannedCode)&&validJan(scannedCode)){
         const exactMatches=catalogProducts.filter(p=>getProductCode(p)===scannedCode);
         if(exactMatches.length===1&&getCodeStatus(exactMatches[0])==='normal'){
           renderBarcodeSearchResult(exactMatches[0],scannedCode);
