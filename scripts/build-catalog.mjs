@@ -151,30 +151,24 @@ function extractItemCode(html) {
 }
 
 function extractVariantImageByVisibleCode(html, code) {
-  if (!/^\\d{13}$/.test(String(code || ""))) return { image: "", candidateCount: 0 };
+  if (!/^\d{13}$/.test(String(code || ""))) return { image: "", candidateCount: 0 };
 
   // Shopify's JSON-LD/og:image can point to the first gallery image even when
   // another color is selected. Match the visible 品番 to the image filename.
   const normalizedHtml = String(html || "")
-    .replace(/\\u0026/gi, "&")
-    .replace(/\\\\\\//g, "/")
+    .replace(/\u0026/gi, "&")
+    .replace(/\\\//g, "/")
     .replace(/&amp;/gi, "&");
-  const rawUrls = [...normalizedHtml.matchAll(/(?:https?:)?\\/\\/[^"'\\s<>]+|\\/cdn\\/shop\\/files\\/[^"'\\s<>]+/gi)]
+  const rawUrls = [...normalizedHtml.matchAll(/(?:https?:)?\/\/[^"'\s<>]+|\/cdn\/shop\/files\/[^"'\s<>]+/gi)]
     .map((match) => decodeHtml(match[0]).replace(/[),;]+$/, ""));
   const byPath = new Map();
 
   for (const raw of rawUrls) {
     try {
       const parsed = new URL(raw.startsWith("//") ? "https:" + raw : raw, ORIGIN);
-      if (!/(^|\\.)francfranc\\.com$/i.test(parsed.hostname)) continue;
+      if (!/(^|\.)francfranc\.com$/i.test(parsed.hostname)) continue;
       const filename = decodeURIComponent(parsed.pathname.split("/").pop() || "");
-      const escapedCode = code.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\function extractItemCode(html) {
-  // The user-confirmed source of truth is the single 13-digit 品番 visibly
-  // displayed on the official product page. Do not substitute the URL slug.
-  return extractVisibleItemCode(html);
-}
-");
-      if (!new RegExp("^" + escapedCode + "(?:[_-][^/]*)?\\\\.(?:jpe?g|png|webp|avif)$", "i").test(filename)) continue;
+      if (!new RegExp("^" + code + "(?:[_-][^/]*)?\\.(?:jpe?g|png|webp|avif)$", "i").test(filename)) continue;
       if (parsed.pathname.includes("/cdn/shop/files/") && parsed.searchParams.has("width")) {
         parsed.searchParams.set("width", "1200");
       }
@@ -186,7 +180,7 @@ function extractVariantImageByVisibleCode(html, code) {
 
   const candidates = [...byPath.values()];
   if (!candidates.length) return { image: "", candidateCount: 0 };
-  const preferred = candidates.find((value) => /_d1\\./i.test(new URL(value).pathname))
+  const preferred = candidates.find((value) => /_d1\./i.test(new URL(value).pathname))
     || candidates.sort((a, b) => a.localeCompare(b))[0];
   return { image: preferred, candidateCount: candidates.length };
 }
