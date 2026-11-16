@@ -29,6 +29,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Verify catalog parser safety rules
+        run: node scripts/build-catalog.mjs --self-test
       - name: Fetch all currently listed products
         run: node scripts/build-catalog.mjs --all
       - name: Install image feature extraction dependency
@@ -37,7 +39,7 @@ jobs:
         run: node scripts/build-image-features.mjs
       - name: Summarize catalog
         run: |
-          node --input-type=module -e "import fs from 'node:fs'; const c=JSON.parse(fs.readFileSync('catalog.json','utf8')); console.log(JSON.stringify({generatedAt:c.generatedAt,attempted:c.attempted,found:c.found,withItemCode:c.products.filter(p=>p.itemCode).length,withImage:c.products.filter(p=>p.image).length},null,2))"
+          node --input-type=module -e "import fs from 'node:fs'; const c=JSON.parse(fs.readFileSync('catalog.json','utf8')); console.log(JSON.stringify({generatedAt:c.generatedAt,attempted:c.attempted,found:c.found,withItemCode:c.products.filter(p=>p.itemCode).length,withImage:c.products.filter(p=>p.image).length,imageMatchedToVisibleCodeCount:c.imageMatchedToVisibleCodeCount,variantImageMismatchBlockedCount:c.variantImageMismatchBlockedCount},null,2))"
       - name: Publish refreshed catalog to the repository
         if: github.ref == 'refs/heads/main'
         run: |

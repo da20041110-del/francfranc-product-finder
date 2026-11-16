@@ -208,13 +208,14 @@ function getCodeStatus(p){
 function codeWarningText(p){
   const status=getCodeStatus(p);
   if(status==='blocked')return '⚠ 公式ページの「品番」欄から使用可能な13桁を確認できません。バーコードは発行できません。';
+  if(p?.imageStatus==='blocked_variant_image_mismatch')return '確認情報：画像と品番の対応を確認できないため、画像を表示していません。公式商品ページで現物と品番を確認してください。';
   if(p?.urlCodeMismatch)return '確認情報：URLの番号と異なりますが、公式商品ページに表示された「品番」の13桁を採用しています。';
   if(status==='review')return '⚠ 品番の取得元を要確認。公式ページの品番と商品が一致するか確認してください。';
   return '';
 }
 function codeStatusHtml(p){
   const status=getCodeStatus(p);
-  if(status==='normal'&&!p?.urlCodeMismatch)return '';
+  if(status==='normal'&&!p?.urlCodeMismatch&&p?.imageStatus!=='blocked_variant_image_mismatch')return '';
   const message=codeWarningText(p);
   const blocked=status==='blocked';
   return '<p role="alert" style="padding:9px 11px;border-radius:8px;background:'+(blocked?'#fde8e7':'#fff1d6')+';color:'+(blocked?'#9b2420':'#805500')+';font-size:13px;font-weight:600">'+escapeHtml(message)+'</p>';
@@ -254,7 +255,7 @@ let imageFeaturesLoadError='';
 const imageFeaturesLoadStartedAt=performance.now();
 let imageFeaturesLoadElapsedMs=null;
 let imageFeaturesMetadata={catalogGeneratedAt:null,generatedAt:null,declaredCount:0};
-let imageFeaturesReady=fetch('./image-features.json?v=20261025',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(data=>{imageFeaturesMetadata={catalogGeneratedAt:data.catalogGeneratedAt||null,generatedAt:data.generatedAt||null,declaredCount:Object.keys(data.features||{}).length};const entries=Object.entries(data.features||{});for(const [url,encoded] of entries){if(typeof encoded!=='string')continue;const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));productImageFeatures.set(url,Array.from(new Int8Array(bytes.buffer),v=>v/127));}imageFeaturesLoadElapsedMs=performance.now()-imageFeaturesLoadStartedAt;return productImageFeatures.size;}).catch(error=>{imageFeaturesLoadElapsedMs=performance.now()-imageFeaturesLoadStartedAt;imageFeaturesLoadError=error?.message||String(error);console.warn('事前解析データを読み込めませんでした:',error);return 0;});
+let imageFeaturesReady=fetch('./image-features.json?v=20261116',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(data=>{imageFeaturesMetadata={catalogGeneratedAt:data.catalogGeneratedAt||null,generatedAt:data.generatedAt||null,declaredCount:Object.keys(data.features||{}).length};const entries=Object.entries(data.features||{});for(const [url,encoded] of entries){if(typeof encoded!=='string')continue;const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));productImageFeatures.set(url,Array.from(new Int8Array(bytes.buffer),v=>v/127));}imageFeaturesLoadElapsedMs=performance.now()-imageFeaturesLoadStartedAt;return productImageFeatures.size;}).catch(error=>{imageFeaturesLoadElapsedMs=performance.now()-imageFeaturesLoadStartedAt;imageFeaturesLoadError=error?.message||String(error);console.warn('事前解析データを読み込めませんでした:',error);return 0;});
 function escapeHtml(value=''){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function getSeriesKey(title=''){
   // Remove color words before kana normalization. normalizeJapaneseSearch converts
@@ -377,7 +378,7 @@ function selectProduct(p,card){
   }
   const codeStatus=getCodeStatus(p);
   jan.disabled=codeStatus!=='normal';
-  codeWarning.hidden=codeStatus==='normal'&&!p?.urlCodeMismatch;
+  codeWarning.hidden=codeStatus==='normal'&&!p?.urlCodeMismatch&&p?.imageStatus!=='blocked_variant_image_mismatch';
   codeWarning.textContent=codeWarningText(p);
   const blocked=codeStatus==='blocked';
   codeWarning.style.cssText='padding:10px 12px;border-radius:8px;font-size:14px;font-weight:600;background:'+(blocked?'#fde8e7':'#fff1d6')+';color:'+(blocked?'#9b2420':'#805500');
