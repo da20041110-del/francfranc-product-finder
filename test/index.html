@@ -273,15 +273,20 @@ function renderRelatedVariants(product){
   const key=getSeriesKey(product.title||'');
   const productCode=String(getProductCode(product)||'').replace(/\D/g,'');
   if(key.length<4 && productCode.length<8)return '';
-  // First use normalized shared product-family title. If that misses, use the
-  // shared JAN/POS prefix as a conservative fallback for color variants.
-  let related=catalogProducts.filter(p=>p.url!==product.url&&p.image&&getSeriesKey(p.title||'')===key);
-  if(!related.length && productCode.length>=11){
+  // Prioritize items sharing the same 11-digit product-code stem. This is the
+  // strongest catalog signal for a color/finish variation and prevents loosely
+  // similar titles from pushing true color variants out of the first slots.
+  let related=[];
+  if(productCode.length===13){
     const prefix=productCode.slice(0,11);
     related=catalogProducts.filter(p=>{
       const code=String(getProductCode(p)||'').replace(/\D/g,'');
       return p.url!==product.url&&p.image&&code.length===13&&code.slice(0,11)===prefix;
     });
+  }
+  // Only use normalized title matches when no same-code family is available.
+  if(!related.length){
+    related=catalogProducts.filter(p=>p.url!==product.url&&p.image&&getSeriesKey(p.title||'')===key);
   }
   related=related.slice(0,5);
   if(!related.length)return '';
@@ -671,6 +676,20 @@ async function detectEan13FromPhoto(imageElement){
   }
 }
 function renderBarcodeSearchResult(product,scannedCode){
+  // Keep the original captured/uploaded photo visible when barcode lookup
+  // returns early instead of continuing through the image-search pipeline.
+  if(selectedPhotoFile){
+    photo.hidden=false;
+    photo.style.display='block';
+    if(!photo.src || !photo.complete || !photo.naturalWidth){
+      if(photo.dataset.url)URL.revokeObjectURL(photo.dataset.url);
+      const previewUrl=URL.createObjectURL(selectedPhotoFile);
+      photo.dataset.url=previewUrl;
+      photo.onload=()=>{photo.hidden=false;photo.style.display='block';};
+      photo.onerror=()=>{photoStatus.textContent='撮影画像のプレビューを表示できませんでした。';};
+      photo.src=previewUrl;
+    }
+  }
   catalogResults.innerHTML='';
   catalogResults.style.display='block';
   const card=document.createElement('article');
