@@ -9,10 +9,12 @@
  * volume and only where company permission and site access rules allow it.
  */
 import { writeFile } from "node:fs/promises";
+import assert from "node:assert/strict";
 
 const ORIGIN = "https://francfranc.com";
 const args = process.argv.slice(2);
 const all = args.includes("--all");
+const selfTest = args.includes("--self-test");
 const limitArg = args.find((x) => x.startsWith("--limit="));
 const limit = all ? Infinity : Math.max(1, Number(limitArg?.split("=")[1] || 5));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -148,6 +150,70 @@ function extractItemCode(html) {
   return extractVisibleItemCode(html);
 }
 
+function extractVariantImageByVisibleCode(html, code) {
+  if (!/^\\d{13}$/.test(String(code || ""))) return { image: "", candidateCount: 0 };
+
+  // Shopify's JSON-LD/og:image can point to the first gallery image even when
+  // another color is selected. Match the visible 品番 to the image filename.
+  const normalizedHtml = String(html || "")
+    .replace(/\\u0026/gi, "&")
+    .replace(/\\\\\\//g, "/")
+    .replace(/&amp;/gi, "&");
+  const rawUrls = [...normalizedHtml.matchAll(/(?:https?:)?\\/\\/[^"'\\s<>]+|\\/cdn\\/shop\\/files\\/[^"'\\s<>]+/gi)]
+    .map((match) => decodeHtml(match[0]).replace(/[),;]+$/, ""));
+  const byPath = new Map();
+
+  for (const raw of rawUrls) {
+    try {
+      const parsed = new URL(raw.startsWith("//") ? "https:" + raw : raw, ORIGIN);
+      if (!/(^|\\.)francfranc\\.com$/i.test(parsed.hostname)) continue;
+      const filename = decodeURIComponent(parsed.pathname.split("/").pop() || "");
+      const escapedCode = code.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\function extractItemCode(html) {
+  // The user-confirmed source of truth is the single 13-digit 品番 visibly
+  // displayed on the official product page. Do not substitute the URL slug.
+  return extractVisibleItemCode(html);
+}
+");
+      if (!new RegExp("^" + escapedCode + "(?:[_-][^/]*)?\\\\.(?:jpe?g|png|webp|avif)$", "i").test(filename)) continue;
+      if (parsed.pathname.includes("/cdn/shop/files/") && parsed.searchParams.has("width")) {
+        parsed.searchParams.set("width", "1200");
+      }
+      byPath.set(parsed.pathname, parsed.href);
+    } catch {
+      // Ignore malformed/non-image URLs embedded in page markup.
+    }
+  }
+
+  const candidates = [...byPath.values()];
+  if (!candidates.length) return { image: "", candidateCount: 0 };
+  const preferred = candidates.find((value) => /_d1\\./i.test(new URL(value).pathname))
+    || candidates.sort((a, b) => a.localeCompare(b))[0];
+  return { image: preferred, candidateCount: candidates.length };
+}
+
+function selectCatalogImage(html, code, urlItemCode, fallbackImage) {
+  if (code && code !== urlItemCode) {
+    const matched = extractVariantImageByVisibleCode(html, code);
+    if (matched.image) {
+      return { image: matched.image, imageSource: "visible_code_filename", imageStatus: "matched_visible_code", variantImageCandidatesCount: matched.candidateCount };
+    }
+    // Never pair a different visible variant code with a generic page image.
+    return { image: "", imageSource: "none", imageStatus: "blocked_variant_image_mismatch", variantImageCandidatesCount: 0 };
+  }
+  if (code) {
+    const matched = extractVariantImageByVisibleCode(html, code);
+    if (matched.image) {
+      return { image: matched.image, imageSource: "visible_code_filename", imageStatus: "matched_visible_code", variantImageCandidatesCount: matched.candidateCount };
+    }
+  }
+  return {
+    image: fallbackImage || "",
+    imageSource: fallbackImage ? "page_default_image" : "none",
+    imageStatus: fallbackImage ? "page_default" : "missing",
+    variantImageCandidatesCount: 0,
+  };
+}
+
 function diagnoseCodeMismatch(url, html, product) {
   const urlCode = url.match(/\/products\/(\d{13})(?:$|[/?#])/i)?.[1] || "";
   const code = product?.detectedItemCode || "";
@@ -206,11 +272,16 @@ function parseProducts(url, html) {
     const urlCodeMismatch = Boolean(detectedCode && urlItemCode && detectedCode !== urlItemCode);
     const itemCode = detectedCode;
     const itemCodeSource = detectedCodeSource;
+    const fallbackImage = typeof image === "string" && image ? image : metaImage;
+    const imageSelection = selectCatalogImage(html, detectedCode, urlItemCode, fallbackImage);
     return {
       title: decodeHtml(String(p.name || h1 || metaTitle).replace(/\s*[|｜].*$/, "")).trim(),
       price: offers.price != null ? String(offers.price) : (metaPrice || ""),
       currency: offers.priceCurrency || "JPY",
-      image: typeof image === "string" && image ? image : metaImage,
+      image: imageSelection.image,
+      imageSource: imageSelection.imageSource,
+      imageStatus: imageSelection.imageStatus,
+      variantImageCandidatesCount: imageSelection.variantImageCandidatesCount,
       url,
       urlItemCode,
       itemCode,
@@ -225,6 +296,31 @@ function parseProducts(url, html) {
       verifiedCode: itemCodeSource === "visible_label" && Boolean(itemCode) && hasValidEan13CheckDigit(itemCode),
     };
   }).filter(p => p.title || p.itemCode || p.image);
+}
+
+if (selfTest) {
+  const fixture = `
+    <html><head>
+      <meta property="og:image" content="https://francfranc.com/cdn/shop/files/1111010041125_d1.jpg?v=1&amp;width=2000">
+      <script type="application/ld+json">{"@type":"Product","name":"セラミック キルト フラワーベース M","image":"https://francfranc.com/cdn/shop/files/1111010041125_d1.jpg?v=1"}</script>
+    </head><body>
+      <img src="https://francfranc.com/cdn/shop/files/1111010041132_d1.jpg?v=2&amp;width=40">
+      <div>カラー ライトブルー</div><div>品番 | 1111010041132</div>
+    </body></html>`;
+  const parsed = parseProducts("https://francfranc.com/products/1111010041125", fixture);
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0].itemCode, "1111010041132");
+  assert.equal(parsed[0].imageStatus, "matched_visible_code");
+  assert.match(parsed[0].image, /1111010041132_d1\\.jpg/);
+  assert.match(parsed[0].image, /width=1200/);
+
+  const noMatchFixture = fixture.replace("1111010041132_d1.jpg?v=2&amp;width=40", "1111010041999_d1.jpg?v=2&amp;width=40");
+  const noMatch = parseProducts("https://francfranc.com/products/1111010041125", noMatchFixture);
+  assert.equal(noMatch[0].itemCode, "1111010041132");
+  assert.equal(noMatch[0].image, "");
+  assert.equal(noMatch[0].imageStatus, "blocked_variant_image_mismatch");
+  console.log("Catalog parser self-tests passed: visible-code image mapping and fail-closed mismatch handling.");
+  process.exit(0);
 }
 
 const urls = await getProductUrls();
@@ -280,6 +376,8 @@ if (!urls.length) {
     missingCodeCount: new Set(products.filter(p => !/^\d{13}$/.test(p.itemCode || "")).map(p => p.url)).size,
     invalidCheckDigitCount: new Set(products.filter(p => p.itemCode && !hasValidEan13CheckDigit(p.itemCode)).map(p => p.url)).size,
     ambiguousVisibleLabelCount: new Set(products.filter(p => p.itemCodeSource === "ambiguous_visible_labels").map(p => p.url)).size,
+    imageMatchedToVisibleCodeCount: new Set(products.filter(p => p.imageStatus === "matched_visible_code").map(p => p.url)).size,
+    variantImageMismatchBlockedCount: new Set(products.filter(p => p.imageStatus === "blocked_variant_image_mismatch").map(p => p.url)).size,
     fetchFailed: failed.length,
     noProductData: noProductData.length,
     failed,
