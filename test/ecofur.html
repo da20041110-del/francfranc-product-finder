@@ -308,7 +308,7 @@ function renderRelatedVariants(product){
   let broadMatchCount=0;
   let fuzzyMatchCount=0;
   const related=validCatalog.map(p=>{
-    if(p.url===product.url)return null;
+    if(getProductCode(p)===getProductCode(product))return null;
     const candidateKey=p._seriesKey;
     const shorter=key.length<=candidateKey.length?key:candidateKey;
     const longer=key.length>candidateKey.length?key:candidateKey;
@@ -556,6 +556,7 @@ function handlePhotoFile(f,message){
   if(!f)return;
   photoStatus.hidden=false;
   selectedPhotoFile=f;
+  photo.hidden=false;
   photo.style.display='none';
   search.disabled=true;
   photoStatus.className='status';
@@ -564,6 +565,7 @@ function handlePhotoFile(f,message){
   const url=URL.createObjectURL(f);
   photo.dataset.url=url;
   photo.onload=()=>{
+    photo.hidden=false;
     photo.style.display='block';
     search.disabled=false;
     requestAnimationFrame(()=>{
@@ -580,6 +582,31 @@ function handlePhotoFile(f,message){
     photoStatus.textContent='この写真形式 ('+(f.type||'形式不明')+') を表示できませんでした。iPhoneの写真設定で「互換性優先」にして撮影した写真、またはスクリーンショットを選んでください。';
   };
   photo.src=url;
+}
+async function ensureSelectedPhotoPreview(photoFile=selectedPhotoFile){
+  if(!photoFile)return false;
+  photo.hidden=false;
+  const currentSrc=photo.getAttribute('src');
+  if(currentSrc&&photo.complete&&photo.naturalWidth>0){
+    photo.style.display='block';
+    return true;
+  }
+  return await new Promise(resolve=>{
+    if(photo.dataset.url){URL.revokeObjectURL(photo.dataset.url);delete photo.dataset.url;}
+    const previewUrl=URL.createObjectURL(photoFile);
+    photo.dataset.url=previewUrl;
+    photo.onload=()=>{
+      photo.hidden=false;
+      photo.style.display='block';
+      resolve(true);
+    };
+    photo.onerror=()=>{
+      photo.hidden=false;
+      photo.style.display='block';
+      resolve(false);
+    };
+    photo.src=previewUrl;
+  });
 }
 function handlePhotoChange(input){
   const f=input.files&&input.files[0];
@@ -770,6 +797,12 @@ search.addEventListener('click',async()=>{
   if(imageSearchBusy){photoStatus.textContent='すでに検索処理中です。少し待ってください。';return;}
   const photoFile=selectedPhotoFile;
   if(!photoFile){photoStatus.textContent='先に商品写真を選んでください。';return;}
+  const previewReady=await ensureSelectedPhotoPreview(photoFile);
+  if(!previewReady){
+    photoStatus.className='status error';
+    photoStatus.textContent='撮影した商品写真のプレビューを読み込めませんでした。写真を選び直してください。';
+    return;
+  }
   if(!catalogProducts.length){photoStatus.className='status error';photoStatus.textContent='商品カタログが読み込まれていません。少し待ってから再読み込みしてください。';return;}
   imageSearchBusy=true;stopImageSearch=false;search.disabled=true;
   // Start model loading and query-photo analysis while the precomputed catalog vectors finish loading.
