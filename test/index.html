@@ -289,11 +289,13 @@ function titleSimilarityScore(a,b){
     if(count>0){overlap++;counts.set(item,count-1);}
   }
   const dice=(2*overlap)/(aa.length+bb.length);
-  // Containment is useful when one title adds a model/size descriptor.
+  // Coverage measures how much of the shorter title is represented in the
+  // longer title. This is more forgiving when one listing adds descriptors.
+  const coverage=overlap/Math.min(aa.length,bb.length);
   const shorter=a.length<=b.length?a:b;
   const longer=a.length>b.length?a:b;
   const containment=longer.includes(shorter)?shorter.length/longer.length:0;
-  return Math.max(dice,containment);
+  return Math.max(dice,coverage,containment);
 }
 function renderRelatedVariants(product){
   const key=getSeriesKey(product.title||'');
@@ -301,7 +303,7 @@ function renderRelatedVariants(product){
   // Score the full catalog once per result. The 70% threshold is intentionally
   // a candidate threshold; exact normalized family matches rank above fuzzy ones.
   const related=catalogProducts.map(p=>{
-    if(p.url===product.url||!p.image)return null;
+    if(p.url===product.url)return null;
     const candidateKey=getSeriesKey(p.title||'');
     if(candidateKey.length<4)return null;
     const score=titleSimilarityScore(key,candidateKey);
@@ -323,7 +325,7 @@ function renderRelatedVariants(product){
       '<div style="font-size:12px">価格：'+escapeHtml(price)+'</div>'+
       '<a style="font-size:12px;display:inline-block;margin-top:5px" href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式ページ</a></div>';
   }).join('');
-  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・類似商品</strong><p style="font-size:12px;margin:5px 0 8px">商品名の一致度70％以上を候補にしています。色やサイズは公式ページで確認してください。</p><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div></section>';
+  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・類似商品</strong><p style="font-size:12px;margin:5px 0 8px">商品名の共通部分が約70％以上の候補を表示しています。画像がない商品も候補に含みます。色やサイズは公式ページで確認してください。</p><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div></section>';
 }
 function normalizeJapaneseSearch(value=''){
   let text=String(value).normalize('NFKC').toLocaleLowerCase('ja').replace(/[\\s　・･‐‑‒–—―ー_/.,、。()（）［］【】「」『』]/g,'');
