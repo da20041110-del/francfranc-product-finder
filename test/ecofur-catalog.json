@@ -1,0 +1,109 @@
+{
+  "generatedAt": "2026-11-17T07:37:22.561Z",
+  "source": "Francfranc公式商品ページ",
+  "attempted": 1,
+  "found": 4,
+  "products": [
+    {
+      "title": "エコファー スクエアバッグ アイボリー",
+      "price": "2500",
+      "currency": "JPY",
+      "image": "https://francfranc.com/cdn/shop/files/1106010032266_d1.jpg?v=1789378705&width=1200",
+      "imageSource": "official_variant_object",
+      "imageStatus": "matched_visible_code",
+      "variantImageCandidatesCount": 1,
+      "url": "https://francfranc.com/products/1106010032266",
+      "urlItemCode": "1106010032266",
+      "itemCode": "1106010032266",
+      "detectedItemCode": "1106010032266",
+      "itemCodeSource": "visible_label",
+      "visibleCodeCandidates": [
+        "1106010032266"
+      ],
+      "codeStatus": "normal",
+      "urlCodeMismatch": false,
+      "source": "Francfranc公式商品ページ（表示品番・カラー照合済み）",
+      "checkedAt": "2026-11-17T07:37:22.561Z",
+      "verifiedCode": true,
+      "color": "アイボリー",
+      "colorCode": "IV",
+      "testCase": true
+    },
+    {
+      "title": "エコファー スクエアバッグ ブラウン",
+      "price": "2500",
+      "currency": "JPY",
+      "image": "https://francfranc.com/cdn/shop/files/1106010032273_d1.jpg?v=1789378705&width=1200",
+      "imageSource": "official_variant_object",
+      "imageStatus": "matched_visible_code",
+      "variantImageCandidatesCount": 1,
+      "url": "https://francfranc.com/products/1106010032266",
+      "urlItemCode": "1106010032266",
+      "itemCode": "1106010032273",
+      "detectedItemCode": "1106010032273",
+      "itemCodeSource": "visible_label",
+      "visibleCodeCandidates": [
+        "1106010032273"
+      ],
+      "codeStatus": "normal",
+      "urlCodeMismatch": true,
+      "source": "Francfranc公式商品ページ（表示品番・カラー照合済み）",
+      "checkedAt": "2026-11-17T07:37:22.561Z",
+      "verifiedCode": true,
+      "color": "ブラウン",
+      "colorCode": "BR",
+      "testCase": true
+    },
+    {
+      "title": "エコファー スクエアバッグ ライトブルー",
+      "price": "2500",
+      "currency": "JPY",
+      "image": "https://francfranc.com/cdn/shop/files/1106010032280_d1.jpg?v=1789378705&width=1200",
+      "imageSource": "official_variant_object",
+      "imageStatus": "matched_visible_code",
+      "variantImageCandidatesCount": 1,
+      "url": "https://francfranc.com/products/1106010032266",
+      "urlItemCode": "1106010032266",
+      "itemCode": "1106010032280",
+      "detectedItemCode": "1106010032280",
+      "itemCodeSource": "visible_label",
+      "visibleCodeCandidates": [
+        "1106010032280"
+      ],
+      "codeStatus": "normal",
+      "urlCodeMismatch": true,
+      "source": "Francfranc公式商品ページ（表示品番・カラー照合済み）",
+      "checkedAt": "2026-11-17T07:37:22.561Z",
+      "verifiedCode": true,
+      "color": "ライトブルー",
+      "colorCode": "LBL",
+      "testCase": true
+    },
+    {
+      "title": "エコファー スクエアバッグ ピンク",
+      "price": "2500",
+      "currency": "JPY",
+      "image": "https://francfranc.com/cdn/shop/files/1106010032297_d1.jpg?v=1789378705&width=1200",
+      "imageSource": "official_variant_object",
+      "imageStatus": "matched_visible_code",
+      "variantImageCandidatesCount": 1,
+      "url": "https://francfranc.com/products/1106010032266",
+      "urlItemCode": "1106010032266",
+      "itemCode": "1106010032297",
+      "detectedItemCode": "1106010032297",
+      "itemCodeSource": "visible_label",
+      "visibleCodeCandidates": [
+        "1106010032297"
+      ],
+      "codeStatus": "normal",
+      "urlCodeMismatch": true,
+      "source": "Francfranc公式商品ページ（表示品番・カラー照合済み）",
+      "checkedAt": "2026-11-17T07:37:22.561Z",
+      "verifiedCode": true,
+      "color": "ピンク",
+      "colorCode": "PK",
+      "testCase": true
+    }
+  ],
+  "note": "Test-only fixture. Four variant records extracted from the official productVariants data and cross-checked against each color's official visible 品番. URL slug is shared and is not used as barcode source."
+}
