@@ -10,7 +10,7 @@ const response = await fetch(URL, {
   },
   redirect: "follow",
 });
-if (!response.ok) throw new Error(\`HTTP \${response.status} for \${URL}\`);
+if (!response.ok) throw new Error("HTTP " + response.status + " for " + URL);
 const html = await response.text();
 
 const codes = [...new Set([...html.matchAll(/\b\d{13}\b/g)].map((m) => m[0]))];
