@@ -299,25 +299,36 @@ function titleSimilarityScore(a,b){
 }
 function renderRelatedVariants(product){
   const key=getSeriesKey(product.title||'');
-  if(key.length<4)return '';
-  // Score the full catalog once per result. The 70% threshold is intentionally
-  // a candidate threshold; exact normalized family matches rank above fuzzy ones.
-  const related=catalogProducts.map(p=>{
-    if(p.url===product.url)return null;
+  const validCatalog=catalogProducts.map(p=>{
     const candidateKey=getSeriesKey(p.title||'');
-    if(candidateKey.length<4)return null;
-    const score=titleSimilarityScore(key,candidateKey);
-    if(score<0.70)return null;
-    return {...p,relatedScore:score,exactFamily:candidateKey===key};
+    return {...p,_seriesKey:candidateKey};
+  }).filter(p=>p._seriesKey.length>=2);
+  let prefixMatchCount=0;
+  let fuzzyMatchCount=0;
+  const related=validCatalog.map(p=>{
+    if(p.url===product.url)return null;
+    const candidateKey=p._seriesKey;
+    const shorter=key.length<=candidateKey.length?key:candidateKey;
+    const longer=key.length>candidateKey.length?key:candidateKey;
+    let commonPrefix=0;
+    while(commonPrefix<shorter.length&&shorter[commonPrefix]===longer[commonPrefix])commonPrefix++;
+    const prefixScore=shorter.length?commonPrefix/shorter.length:0;
+    const fullScore=titleSimilarityScore(key,candidateKey);
+    const prefixMatch=prefixScore>=0.70;
+    const fuzzyMatch=fullScore>=0.70;
+    if(prefixMatch)prefixMatchCount++;
+    if(fuzzyMatch)fuzzyMatchCount++;
+    if(!prefixMatch&&!fuzzyMatch)return null;
+    return {...p,relatedScore:Math.max(prefixScore,fullScore),prefixScore,fullScore,exactFamily:candidateKey===key,prefixMatch};
   }).filter(Boolean).sort((a,b)=>{
+    if(a.prefixMatch!==b.prefixMatch)return a.prefixMatch?-1:1;
     if(a.exactFamily!==b.exactFamily)return a.exactFamily?-1:1;
     return b.relatedScore-a.relatedScore;
   }).slice(0,5);
-  if(!related.length)return '';
   const cards=related.map(p=>{
     const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
     const percent=Math.round(p.relatedScore*100);
-    const type=p.exactFamily?'同シリーズ・色違い/サイズ違い':'類似商品';
+    const type=p.exactFamily?'同シリーズ・色違い/サイズ違い':(p.prefixMatch?'商品名先頭一致':'類似商品');
     return '<div style="min-width:112px;max-width:132px;flex:1;border:1px solid #e5e1dd;border-radius:8px;padding:8px;background:#fff">'+
       (p.image?'<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;height:92px;object-fit:contain">':'')+
       '<div style="font-size:10px;color:#8b6b5d;margin:4px 0">'+type+' · '+percent+'%</div>'+
@@ -325,7 +336,11 @@ function renderRelatedVariants(product){
       '<div style="font-size:12px">価格：'+escapeHtml(price)+'</div>'+
       '<a style="font-size:12px;display:inline-block;margin-top:5px" href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式ページ</a></div>';
   }).join('');
-  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・類似商品</strong><p style="font-size:12px;margin:5px 0 8px">商品名の共通部分が約70％以上の候補を表示しています。画像がない商品も候補に含みます。色やサイズは公式ページで確認してください。</p><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div></section>';
+  const diagnostic='比較対象 '+catalogProducts.length+'件 / 有効な商品名 '+validCatalog.length+'件 / 先頭70%一致 '+prefixMatchCount+'件 / 全体70%一致 '+fuzzyMatchCount+'件 / 表示 '+related.length+'件';
+  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・類似商品</strong>'+
+    '<p style="font-size:12px;margin:5px 0 8px">商品名の先頭一致を優先し、全体の類似度70％以上も補助候補として表示します。色やサイズは公式ページで確認してください。</p>'+
+    (cards?'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div>':'<p style="font-size:13px;margin:8px 0">一致候補はありませんでした。</p>')+
+    '<p style="font-size:10px;color:#777;margin:8px 0 0">診断：'+diagnostic+'</p></section>';
 }
 function normalizeJapaneseSearch(value=''){
   let text=String(value).normalize('NFKC').toLocaleLowerCase('ja').replace(/[\\s　・･‐‑‒–—―ー_/.,、。()（）［］【】「」『』]/g,'');
