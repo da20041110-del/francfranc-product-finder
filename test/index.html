@@ -269,29 +269,61 @@ function getSeriesKey(title=''){
   s=s.replace(/(ミニ|スモール|レギュラー|ラージ|small|medium|large)/g,'');
   return s;
 }
+function titleSimilarityScore(a,b){
+  if(!a||!b)return 0;
+  if(a===b)return 1;
+  // Character bigram Dice similarity works for Japanese names without spaces.
+  const bigrams=value=>{
+    const chars=Array.from(value);
+    if(chars.length===1)return [chars[0]];
+    const out=[];
+    for(let i=0;i<chars.length-1;i++)out.push(chars[i]+chars[i+1]);
+    return out;
+  };
+  const aa=bigrams(a),bb=bigrams(b);
+  const counts=new Map();
+  for(const item of aa)counts.set(item,(counts.get(item)||0)+1);
+  let overlap=0;
+  for(const item of bb){
+    const count=counts.get(item)||0;
+    if(count>0){overlap++;counts.set(item,count-1);}
+  }
+  const dice=(2*overlap)/(aa.length+bb.length);
+  // Containment is useful when one title adds a model/size descriptor.
+  const shorter=a.length<=b.length?a:b;
+  const longer=a.length>b.length?a:b;
+  const containment=longer.includes(shorter)?shorter.length/longer.length:0;
+  return Math.max(dice,containment);
+}
 function renderRelatedVariants(product){
   const key=getSeriesKey(product.title||'');
-  const productCode=String(getProductCode(product)||'').replace(/\D/g,'');
-  if(key.length<4 && productCode.length<8)return '';
-  // Product-code prefixes are not a reliable family identifier: unrelated
-  // products can share the same JAN stem. Treat only an identical normalized
-  // product title after removing color/size words as a color/size sibling.
-  const related=catalogProducts.filter(p=>
-    p.url!==product.url &&
-    p.image &&
-    getSeriesKey(p.title||'')===key &&
-    getSeriesKey(p.title||'').length>=4
-  ).slice(0,5);
+  if(key.length<4)return '';
+  // Score the full catalog once per result. The 70% threshold is intentionally
+  // a candidate threshold; exact normalized family matches rank above fuzzy ones.
+  const related=catalogProducts.map(p=>{
+    if(p.url===product.url||!p.image)return null;
+    const candidateKey=getSeriesKey(p.title||'');
+    if(candidateKey.length<4)return null;
+    const score=titleSimilarityScore(key,candidateKey);
+    if(score<0.70)return null;
+    return {...p,relatedScore:score,exactFamily:candidateKey===key};
+  }).filter(Boolean).sort((a,b)=>{
+    if(a.exactFamily!==b.exactFamily)return a.exactFamily?-1:1;
+    return b.relatedScore-a.relatedScore;
+  }).slice(0,5);
   if(!related.length)return '';
   const cards=related.map(p=>{
     const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
+    const percent=Math.round(p.relatedScore*100);
+    const type=p.exactFamily?'同シリーズ・色違い/サイズ違い':'類似商品';
     return '<div style="min-width:112px;max-width:132px;flex:1;border:1px solid #e5e1dd;border-radius:8px;padding:8px;background:#fff">'+
       (p.image?'<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;height:92px;object-fit:contain">':'')+
+      '<div style="font-size:10px;color:#8b6b5d;margin:4px 0">'+type+' · '+percent+'%</div>'+
       '<div style="font-size:12px;line-height:1.4;font-weight:600;margin:5px 0">'+escapeHtml(p.title||'商品名未取得')+'</div>'+
       '<div style="font-size:12px">価格：'+escapeHtml(price)+'</div>'+
       '<a style="font-size:12px;display:inline-block;margin-top:5px" href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式ページ</a></div>';
   }).join('');
-  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・サイズ違い</strong><p style="font-size:12px;margin:5px 0 8px">商品名が近い掲載商品です。色やサイズは公式ページで確認してください。</p><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div></section>';
+  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・類似商品</strong><p style="font-size:12px;margin:5px 0 8px">商品名の一致度70％以上を候補にしています。色やサイズは公式ページで確認してください。</p><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div></section>';
 }
 function normalizeJapaneseSearch(value=''){
   let text=String(value).normalize('NFKC').toLocaleLowerCase('ja').replace(/[\\s　・･‐‑‒–—―ー_/.,、。()（）［］【】「」『』]/g,'');
