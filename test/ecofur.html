@@ -753,6 +753,26 @@ async function detectEan13FromPhoto(imageElement){
     try{reader.reset();}catch{}
   }
 }
+function restorePhotoPreviewAfterImageSearch(photoFile=selectedPhotoFile){
+  if(!photoFile)return;
+  photo.hidden=false;
+  photo.style.display='block';
+  const currentSrc=photo.getAttribute('src');
+  if(currentSrc&&photo.complete&&photo.naturalWidth>0)return;
+  if(photo.dataset.url){URL.revokeObjectURL(photo.dataset.url);delete photo.dataset.url;}
+  const previewUrl=URL.createObjectURL(photoFile);
+  photo.dataset.url=previewUrl;
+  photo.onload=()=>{
+    photo.hidden=false;
+    photo.style.display='block';
+  };
+  photo.onerror=()=>{
+    photo.hidden=false;
+    photo.style.display='block';
+    photoStatus.textContent='撮影した商品写真を再表示できませんでした。写真を選び直してください。';
+  };
+  photo.src=previewUrl;
+}
 function renderBarcodeSearchResult(product,scannedCode){
   // Keep the original captured/uploaded photo visible when barcode lookup
   // returns early instead of continuing through the image-search pipeline.
@@ -953,11 +973,21 @@ search.addEventListener('click',async()=>{
     catalogResults.innerHTML='';
     let top=scored.slice(0,10);
     let usedFallback=false;
+    if(top.length>1){
+      const leadSeries=getSeriesKey(top[0].product.title||'');
+      if(leadSeries.length>=2){
+        const sameFamily=top.filter(item=>getSeriesKey(item.product.title||'')===leadSeries);
+        if(sameFamily.length>1){
+          top=top.filter((item,index)=>index===0||getSeriesKey(item.product.title||'')!==leadSeries);
+        }
+      }
+    }
     if(!top.length){
       // If the official image host blocks browser-side comparison, still show usable product cards instead of a blank result.
       top=candidates.slice(0,5).map(product=>({product,score:null}));
       usedFallback=true;
     }
+    restorePhotoPreviewAfterImageSearch(photoFile);
     catalogStatus.textContent=usedFallback
       ? '画像の自動比較ができなかったため、掲載商品の参考候補を表示しています。類似度順ではありません。'
       : '写真検索の候補（類似度順）。必ず商品を確認してください。';
@@ -969,7 +999,7 @@ search.addEventListener('click',async()=>{
       const p=item.product;
       const card=document.createElement('article');card.className='card';card.style.marginTop='12px';
       const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
-      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p>'+codeStatusHtml(p)+'<p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>'+renderRelatedVariants(p);
+      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p>'+codeStatusHtml(p)+'<p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>'+(top.indexOf(item)===0?renderRelatedVariants(p):'');
       const productImage=document.createElement('img');
       productImage.src=p.image;
       productImage.alt=p.title||'商品画像';
@@ -1002,6 +1032,7 @@ search.addEventListener('click',async()=>{
     // Always show usable catalog candidates when AI comparison fails, so the user is not left with an empty result area.
     catalogResults.style.display='block';
     catalogResults.innerHTML='';
+    restorePhotoPreviewAfterImageSearch(photoFile);
     const fallback=candidates.slice(0,10);
     catalogStatus.textContent='写真の自動比較に失敗したため、参考商品を表示しています。以下は類似度順ではありません。';
     for(const p of fallback){
