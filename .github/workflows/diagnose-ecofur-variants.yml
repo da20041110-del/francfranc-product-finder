@@ -1,0 +1,24 @@
+name: Diagnose Francfranc product variants
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Inspect Eco Fur Square Bag product page
+        run: node scripts/diagnose-ecofur-variants.mjs > ecofur-variant-diagnostic.json
+      - name: Upload diagnostic report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecofur-variant-diagnostic
+          path: ecofur-variant-diagnostic.json
+          if-no-files-found: error
