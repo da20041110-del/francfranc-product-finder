@@ -1,8 +1,6 @@
 /**
  * One-product diagnostic for Francfranc color variants.
- * This is intentionally read-only: it does not modify catalog.json or production.
- *
- * Usage: node scripts/diagnose-ecofur-variants.mjs
+ * Read-only: does not modify catalog.json or production.
  */
 const URL = "https://francfranc.com/products/1106010032266";
 const response = await fetch(URL, {
@@ -12,26 +10,25 @@ const response = await fetch(URL, {
   },
   redirect: "follow",
 });
-if (!response.ok) throw new Error(`HTTP ${response.status} for ${URL}`);
+if (!response.ok) throw new Error(\`HTTP \${response.status} for \${URL}\`);
 const html = await response.text();
 
-const codes = [...new Set([...html.matchAll(/\\b\\d{13}\\b/g)].map((m) => m[0]))];
+const codes = [...new Set([...html.matchAll(/\b\d{13}\b/g)].map((m) => m[0]))];
 const snippets = [];
 for (const code of codes) {
   const positions = [...html.matchAll(new RegExp(code, "g"))].slice(0, 8);
   for (const match of positions) {
     const start = Math.max(0, match.index - 300);
     const end = Math.min(html.length, match.index + code.length + 300);
-    snippets.push({ code, context: html.slice(start, end).replace(/\\s+/g, " ").slice(0, 650) });
+    snippets.push({ code, context: html.slice(start, end).replace(/\s+/g, " ").slice(0, 650) });
   }
 }
 
-// Normalize JSON-escaped slashes before extracting ordinary HTTP(S) image URLs.
-const normalizedHtml = html.replaceAll("\\\\/", "/");
+const normalizedHtml = html.replaceAll("\\/", "/");
 const imageUrls = [...new Set(
-  [...normalizedHtml.matchAll(/https?:\\/\\/[^"'\\s<>]+/gi)]
+  [...normalizedHtml.matchAll(/https?:\/\/[^"'\s<>]+/gi)]
     .map((match) => match[0])
-    .filter((url) => /\\.(?:jpe?g|png|webp|avif)(?:[?#]|$)/i.test(url))
+    .filter((url) => /\.(?:jpe?g|png|webp|avif)(?:[?#]|$)/i.test(url))
 )];
 const colorWords = ["ブラウン","ピンク","アイボリー","ライトブルー","BR","PK","IV","LBL"];
 const colorHits = colorWords.map(color => ({
