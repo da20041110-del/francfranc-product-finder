@@ -264,7 +264,7 @@ function getSeriesKey(title=''){
   // katakana colors such as ホワイト and ベージュ to hiragana, which made the
   // old katakana-only color list fail to match sibling variants.
   let s=String(title).normalize('NFKC').toLocaleLowerCase('ja');
-  s=s.replace(/(ライトピンク|ダークグレー|ライトグレー|アイボリー|ベージュ|ブラック|ホワイト|ピンク|ブルー|グレー|グリーン|イエロー|レッド|オレンジ|パープル|ブラウン|ネイビー|クリア|透明|白|黒|赤|青|緑|黄|茶|桃色)/g,'');
+  s=s.replace(/(ライトピンク|ライトブルー|ダークグレー|ライトグレー|アイボリー|ベージュ|ブラック|ホワイト|ピンク|ブルー|グレー|グリーン|イエロー|レッド|オレンジ|パープル|ブラウン|ネイビー|クリア|透明|白|黒|赤|青|緑|黄|茶|桃色)/g,'');
   s=normalizeJapaneseSearch(s);
   s=s.replace(/(サイズ|size)?(xxs|xxl|xs|xl|ss|s|m|l)(サイズ)?/g,'');
   s=s.replace(/(ミニ|スモール|レギュラー|ラージ|small|medium|large)/g,'');
