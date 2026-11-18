@@ -1,6 +1,7 @@
 /**
- * Test-only audit of product pages that expose multiple visible 品番 labels.
- * Candidate extraction only. Never maps Shopify SKU to official 品番 automatically.
+ * Test-only audit of catalog pages likely to have color/size variants.
+ * Official visible 品番 is authoritative; Shopify data is candidate/reference only.
+ * Never maps Shopify SKU/variant ID to official 品番 automatically.
  * Writes test/variant-audit.json; does not touch catalog.json.
  */
 import fs from "node:fs/promises";
@@ -31,12 +32,8 @@ function productsFromJsonLd(html) {
     const types = Array.isArray(node["@type"]) ? node["@type"] : [node["@type"]];
     if (types.includes("Product")) {
       found.push({
-        name: node.name || "",
-        sku: node.sku || "",
-        mpn: node.mpn || "",
-        productID: node.productID || "",
-        color: node.color || "",
-        size: node.size || "",
+        name: node.name || "", sku: node.sku || "", mpn: node.mpn || "",
+        productID: node.productID || "", color: node.color || "", size: node.size || "",
         hasVariantCount: Array.isArray(node.hasVariant) ? node.hasVariant.length : (node.hasVariant ? 1 : 0),
       });
     }
@@ -57,17 +54,12 @@ function shopifyVariants(html) {
     for (const m of html.matchAll(pattern)) {
       try {
         const parsed = JSON.parse(m[1]);
-        if (Array.isArray(parsed)) for (const v of parsed) {
-          out.push({
-            title: v.public_title || v.title || "",
-            sku: v.sku || "",
-            option1: v.option1 || "",
-            option2: v.option2 || "",
-            option3: v.option3 || "",
-            imageId: v.featured_image?.id || v.image_id || null,
-            available: typeof v.available === "boolean" ? v.available : null,
-          });
-        }
+        if (Array.isArray(parsed)) for (const v of parsed) out.push({
+          title: v.public_title || v.title || "", sku: v.sku || "",
+          option1: v.option1 || "", option2: v.option2 || "", option3: v.option3 || "",
+          imageId: v.featured_image?.id || v.image_id || null,
+          available: typeof v.available === "boolean" ? v.available : null,
+        });
       } catch {}
     }
   }
@@ -85,10 +77,15 @@ function validEan13(code) {
 }
 
 const catalog = JSON.parse(await fs.readFile(CATALOG_PATH, "utf8"));
-const existingCodes = new Set((catalog.products || []).map(p => p.itemCode).filter(c => /^\d{13}$/.test(c)));
-const candidates = (catalog.products || [])
-  .filter(p => (p.visibleCodeCandidates || []).length > 1 || p.itemCodeSource === "ambiguous_visible_labels")
+const products = catalog.products || [];
+const existingCodes = new Set(products.map(p => p.itemCode).filter(c => /^\d{13}$/.test(c)));
+// Catalog evidence for prioritization only: URL/code mismatches and multiple image
+// candidates are useful signals that a product page may expose selectable variants.
+const candidates = products
   .filter(p => p.url && /^https:\/\/francfranc\.com\/products\//.test(p.url))
+  .filter(p => p.urlCodeMismatch === true || Number(p.variantImageCandidatesCount || 0) > 1)
+  .sort((a,b) => Number(b.urlCodeMismatch === true) - Number(a.urlCodeMismatch === true)
+    || Number(b.variantImageCandidatesCount || 0) - Number(a.variantImageCandidatesCount || 0))
   .slice(0, LIMIT);
 
 const rows = [];
@@ -105,17 +102,17 @@ for (let i=0; i<candidates.length; i++) {
     const variants = shopifyVariants(html);
     const jsonLd = productsFromJsonLd(html);
     rows.push({
-      title: item.title || "",
-      url: item.url,
+      title: item.title || "", url: item.url, catalogItemCode: item.itemCode || "",
+      catalogUrlCodeMismatch: item.urlCodeMismatch === true,
+      catalogVariantImageCandidatesCount: Number(item.variantImageCandidatesCount || 0),
       httpStatus: res.status,
       visibleOfficialCodes: codes.map(code => ({ code, validEan13: validEan13(code), alreadyInCatalog: existingCodes.has(code) })),
-      shopifyVariants: variants,
-      jsonLdProducts: jsonLd,
+      shopifyVariants: variants, jsonLdProducts: jsonLd,
       status: codes.length > 1 ? "manual_mapping_required" : codes.length === 1 ? "single_visible_code_review" : "no_visible_code",
-      rule: "SKU/variant ID is not treated as the official 品番. Manual association requires explicit visible page evidence for each selected color/size.",
+      rule: "Shopify SKU/variant ID is reference only. Manual association requires explicit official-page evidence for each color/size code.",
     });
   } catch (error) {
-    rows.push({ title: item.title || "", url: item.url, status: "fetch_failed", error: String(error) });
+    rows.push({ title: item.title || "", url: item.url, catalogItemCode: item.itemCode || "", status: "fetch_failed", error: String(error) });
   }
   if (i < candidates.length - 1) await sleep(DELAY_MS);
   if ((i+1)%25===0) console.log("Audited", i+1, "/", candidates.length);
@@ -123,8 +120,9 @@ for (let i=0; i<candidates.length; i++) {
 
 const report = {
   generatedAt: new Date().toISOString(),
-  scope: "catalog pages with more than one visible official 品番 candidate",
-  catalogProductCount: (catalog.products || []).length,
+  scope: "catalog pages prioritized by URL/official-code mismatch or multiple variant image candidates",
+  catalogProductCount: products.length,
+  candidateRule: "urlCodeMismatch=true OR variantImageCandidatesCount>1; URL mismatch sorted first; Shopify metadata is not authoritative",
   pagesSelected: candidates.length,
   pagesAudited: rows.length,
   pagesWithMultipleCodes: rows.filter(r => r.visibleOfficialCodes?.length > 1).length,
@@ -133,7 +131,7 @@ const report = {
   fetchFailures: rows.filter(r => r.status === "fetch_failed").length,
   existingCatalogCodeCount: existingCodes.size,
   rows,
-  safety: "No product records are auto-added. Only explicit visible 品番 is considered authoritative; ambiguous color/size mapping is held for review.",
+  safety: "No product records are auto-added. Only explicit visible official 品番 is authoritative; Shopify color/size/SKU/variant data is reference only and ambiguous mappings remain pending.",
 };
 await fs.mkdir("test", { recursive: true });
 await fs.writeFile(OUTPUT_PATH, JSON.stringify(report, null, 2) + "\n");
