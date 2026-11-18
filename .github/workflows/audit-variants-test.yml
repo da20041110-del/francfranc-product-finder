@@ -8,6 +8,12 @@ on:
         required: true
         default: "500"
         type: string
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/audit-variants-test.yml"
+      - "scripts/audit-variants-test.mjs"
 
 permissions:
   contents: read
@@ -25,7 +31,7 @@ jobs:
           node-version: "22"
       - name: Run official-page variant audit
         env:
-          AUDIT_LIMIT: ${{ inputs.limit }}
+          AUDIT_LIMIT: ${{ inputs.limit || '500' }}
           AUDIT_DELAY_MS: "900"
         run: node scripts/audit-variants-test.mjs
       - name: Upload audit report
