@@ -81,12 +81,16 @@ const products = catalog.products || [];
 const existingCodes = new Set(products.map(p => p.itemCode).filter(c => /^\d{13}$/.test(c)));
 // Catalog evidence for prioritization only: URL/code mismatches and multiple image
 // candidates are useful signals that a product page may expose selectable variants.
-const candidates = products
-  .filter(p => p.url && /^https:\/\/francfranc\.com\/products\//.test(p.url))
+const officialPages = products
+  .filter(p => p.url && /^https:\/\/francfranc\.com\/products\//.test(p.url));
+const flaggedPages = officialPages
   .filter(p => p.urlCodeMismatch === true || Number(p.variantImageCandidatesCount || 0) > 1)
   .sort((a,b) => Number(b.urlCodeMismatch === true) - Number(a.urlCodeMismatch === true)
-    || Number(b.variantImageCandidatesCount || 0) - Number(a.variantImageCandidatesCount || 0))
-  .slice(0, LIMIT);
+    || Number(b.variantImageCandidatesCount || 0) - Number(a.variantImageCandidatesCount || 0));
+// If the legacy catalog has no diagnostic flags, audit a bounded official-page
+// sample instead of silently reporting zero pages. No Shopify-to-code mapping.
+const usedFallbackSample = flaggedPages.length === 0;
+const candidates = (usedFallbackSample ? officialPages : flaggedPages).slice(0, LIMIT);
 
 const rows = [];
 for (let i=0; i<candidates.length; i++) {
@@ -120,10 +124,10 @@ for (let i=0; i<candidates.length; i++) {
 
 const report = {
   generatedAt: new Date().toISOString(),
-  scope: "catalog pages prioritized by URL/official-code mismatch or multiple variant image candidates",
+  scope: usedFallbackSample ? "bounded sample of official product pages; no legacy diagnostic flags were available" : "catalog pages prioritized by URL/official-code mismatch or multiple variant image candidates",
   catalogProductCount: products.length,
   candidateRule: "urlCodeMismatch=true OR variantImageCandidatesCount>1; URL mismatch sorted first; Shopify metadata is not authoritative",
-  pagesSelected: candidates.length,
+  pagesSelected: candidates.length,\n  usedFallbackSample,\n  officialPagesAvailable: officialPages.length,\n  flaggedPagesAvailable: flaggedPages.length,
   pagesAudited: rows.length,
   pagesWithMultipleCodes: rows.filter(r => r.visibleOfficialCodes?.length > 1).length,
   pagesWithShopifyVariants: rows.filter(r => r.shopifyVariants?.length > 1).length,
