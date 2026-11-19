@@ -537,7 +537,7 @@ function handlePhotoFile(f,message){
   };
   photo.src=url;
 }
-function ensureSelectedPhotoPreview(photoFile=selectedPhotoFile){
+async function ensureSelectedPhotoPreview(photoFile=selectedPhotoFile){
   if(!photoFile)return false;
   photo.hidden=false;
   const currentSrc=photo.getAttribute('src');
