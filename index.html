@@ -633,6 +633,92 @@ async function fetchImageBlobUrl(url){
   if(!response.ok)throw new Error('商品画像を取得できませんでした');
   return URL.createObjectURL(await response.blob());
 }
+let barcodeLibraryPromise=null;
+async function getBarcodeLibrary(){
+  if(window.ZXing)return window.ZXing;
+  if(!barcodeLibraryPromise){
+    barcodeLibraryPromise=new Promise((resolve,reject)=>{
+      const script=document.createElement('script');
+      let timeoutId;
+      const fail=error=>{clearTimeout(timeoutId);reject(error);};
+      script.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+      script.async=true;
+      script.onload=()=>{clearTimeout(timeoutId);window.ZXing?resolve(window.ZXing):reject(new Error('バーコード読み取り機能を初期化できませんでした'));};
+      script.onerror=()=>fail(new Error('バーコード読み取り機能を読み込めませんでした'));
+      document.head.appendChild(script);
+      timeoutId=setTimeout(()=>fail(new Error('バーコード読み取り機能の読み込みがタイムアウトしました')),6000);
+    }).catch(error=>{barcodeLibraryPromise=null;throw error;});
+  }
+  return barcodeLibraryPromise;
+}
+async function detectEan13FromPhoto(imageElement){
+  // Prefer the native detector where available; iOS Safari uses the ZXing fallback.
+  if('BarcodeDetector' in window){
+    try{
+      const supported=await BarcodeDetector.getSupportedFormats();
+      if(supported.includes('ean_13')){
+        const detector=new BarcodeDetector({formats:['ean_13']});
+        const detected=await detector.detect(imageElement);
+        const value=detected.find(item=>item.format==='ean_13'&&/^\d{13}$/.test(item.rawValue||''))?.rawValue;
+        if(value)return value;
+      }
+    }catch(error){console.warn('標準バーコード読み取りを利用できませんでした。別方式で続行します。',error);}
+  }
+  const ZXing=await getBarcodeLibrary();
+  const hints=new Map();
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.EAN_13]);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
+  const reader=new ZXing.BrowserMultiFormatReader(hints);
+  try{
+    const result=await reader.decodeFromImageElement(imageElement);
+    return result?.getText?.()||'';
+  }catch(error){
+    // A normal product photo has no barcode. That is not a search failure.
+    if(error?.name!=='NotFoundException'&&!String(error?.message||'').toLowerCase().includes('not found')){
+      console.warn('バーコードを読み取れませんでした。画像検索に切り替えます。',error);
+    }
+    return '';
+  }finally{
+    try{reader.reset();}catch{}
+  }
+}
+function renderBarcodeSearchResult(product,scannedCode){
+  // Keep the original captured/uploaded photo visible when barcode lookup
+  // returns early instead of continuing through the image-search pipeline.
+  if(selectedPhotoFile){
+    photo.hidden=false;
+    photo.style.display='block';
+    // HTMLImageElement.src resolves to the page URL even when no src
+    // attribute exists. Check the actual attribute and decoded dimensions.
+    const hasLoadedPreview=Boolean(photo.getAttribute('src'))&&photo.complete&&photo.naturalWidth>0;
+    if(!hasLoadedPreview){
+      if(photo.dataset.url)URL.revokeObjectURL(photo.dataset.url);
+      const previewUrl=URL.createObjectURL(selectedPhotoFile);
+      photo.dataset.url=previewUrl;
+      photo.onload=()=>{photo.hidden=false;photo.style.display='block';};
+      photo.onerror=()=>{photo.hidden=false;photo.style.display='block';photoStatus.textContent='撮影画像のプレビューを表示できませんでした。';};
+      photo.src=previewUrl;
+    }
+  }
+  catalogResults.innerHTML='';
+  catalogResults.style.display='block';
+  const card=document.createElement('article');
+  card.className='card';
+  card.style.marginTop='12px';
+  const price=product.price?Number(product.price).toLocaleString('ja-JP')+'円':'価格未取得';
+  card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(product.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(product))+'</p>'+codeStatusHtml(product)+'<p>バーコード読み取り結果：'+escapeHtml(scannedCode)+'（公式ページの品番と一致）</p><p><a href="'+escapeHtml(product.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>'+renderRelatedVariants(product);
+  if(product.image){
+    const img=document.createElement('img');
+    img.src=product.image;img.alt=product.title||'商品画像';img.loading='eager';
+    img.style.cssText='display:block;width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4';
+    img.addEventListener('error',()=>img.style.display='none');
+    card.prepend(img);
+  }
+  card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(product,card));
+  catalogResults.appendChild(card);
+  catalogStatus.textContent='バーコードと公式商品ページの品番が一致しました。色違い・類似商品も下に表示しています。';
+  card.scrollIntoView({behavior:'smooth',block:'center'});
+}
 search.addEventListener('click',async()=>{
   photoStatus.hidden=false;
   photoStatus.className='status';
@@ -668,6 +754,29 @@ search.addEventListener('click',async()=>{
   const photoUrl=URL.createObjectURL(photoFile);
   const scored=[];
   try{
+    photoStatus.textContent='バーコードを確認中です…';
+    let barcodeNotice='';
+    try{
+      const scannedCode=await detectEan13FromPhoto(photo);
+      if(scannedCode&&/^\d{13}$/.test(scannedCode)&&validJan(scannedCode)){
+        const exactMatches=catalogProducts.filter(p=>getProductCode(p)===scannedCode);
+        if(exactMatches.length===1&&getCodeStatus(exactMatches[0])==='normal'){
+          renderBarcodeSearchResult(exactMatches[0],scannedCode);
+          photoStatus.textContent='バーコードを読み取り、公式商品ページの品番と照合しました。';
+          return;
+        }
+        barcodeNotice=exactMatches.length>1
+          ? 'バーコードは読み取れましたが、カタログ内に同じ品番の商品が複数あるため直接確定せず、写真検索を行います。'
+          : 'バーコードは読み取れましたが、公式商品ページの有効な品番と一致する商品が見つからないため、写真検索を行います。';
+      }else if(scannedCode){
+        barcodeNotice='バーコードを読み取りましたが、EAN-13のチェックデジットが一致しないため、写真検索を行います。';
+      }
+    }catch(barcodeError){
+      console.warn('バーコード判定を利用できませんでした。写真検索を続行します。',barcodeError);
+      barcodeNotice='バーコードを読み取れなかったため、通常の写真検索を行います。';
+    }
+    if(barcodeNotice)photoStatus.textContent=barcodeNotice;
+    else photoStatus.textContent='バーコードが見つかりません。商品画像を検索します…';
     let phaseStartedAt=performance.now();
     const extractor=await getImageExtractor();
     modelLoadMs=performance.now()-phaseStartedAt;
