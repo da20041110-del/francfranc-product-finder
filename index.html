@@ -753,6 +753,7 @@ search.addEventListener('click',async()=>{
   let modelLoadMs=0,queryEmbedMs=0,cropEmbedMs=0,featureWaitMs=0,compareMs=0;
   const photoUrl=URL.createObjectURL(photoFile);
   const scored=[];
+  try{
     photoStatus.textContent='バーコードを確認中です…';
     let barcodeNotice='';
     try{
@@ -776,7 +777,6 @@ search.addEventListener('click',async()=>{
     }
     if(barcodeNotice)photoStatus.textContent=barcodeNotice;
     else photoStatus.textContent='バーコードが見つかりません。商品画像を検索します…';
-  try{
     let phaseStartedAt=performance.now();
     const extractor=await getImageExtractor();
     modelLoadMs=performance.now()-phaseStartedAt;
