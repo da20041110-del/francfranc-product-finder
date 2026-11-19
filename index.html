@@ -537,6 +537,31 @@ function handlePhotoFile(f,message){
   };
   photo.src=url;
 }
+function ensureSelectedPhotoPreview(photoFile=selectedPhotoFile){
+  if(!photoFile)return false;
+  photo.hidden=false;
+  const currentSrc=photo.getAttribute('src');
+  if(currentSrc&&photo.complete&&photo.naturalWidth>0){
+    photo.style.display='block';
+    return true;
+  }
+  return await new Promise(resolve=>{
+    if(photo.dataset.url){URL.revokeObjectURL(photo.dataset.url);delete photo.dataset.url;}
+    const previewUrl=URL.createObjectURL(photoFile);
+    photo.dataset.url=previewUrl;
+    photo.onload=()=>{
+      photo.hidden=false;
+      photo.style.display='block';
+      resolve(true);
+    };
+    photo.onerror=()=>{
+      photo.hidden=false;
+      photo.style.display='block';
+      resolve(false);
+    };
+    photo.src=previewUrl;
+  });
+}
 function handlePhotoChange(input){
   const f=input.files&&input.files[0];
   if(!f){
@@ -726,6 +751,12 @@ search.addEventListener('click',async()=>{
   if(imageSearchBusy){photoStatus.textContent='すでに検索処理中です。少し待ってください。';return;}
   const photoFile=selectedPhotoFile;
   if(!photoFile){photoStatus.textContent='先に商品写真を選んでください。';return;}
+  const previewReady=await ensureSelectedPhotoPreview(photoFile);
+  if(!previewReady){
+    photoStatus.className='status error';
+    photoStatus.textContent='撮影した商品写真のプレビューを読み込めませんでした。写真を選び直してください。';
+    return;
+  }
   if(!catalogProducts.length){photoStatus.className='status error';photoStatus.textContent='商品カタログが読み込まれていません。少し待ってから再読み込みしてください。';return;}
   imageSearchBusy=true;stopImageSearch=false;search.disabled=true;
   // Start model loading and query-photo analysis while the precomputed catalog vectors finish loading.
@@ -765,9 +796,11 @@ search.addEventListener('click',async()=>{
           photoStatus.textContent='バーコードを読み取り、公式商品ページの品番と照合しました。';
           return;
         }
-        barcodeNotice=exactMatches.length>1
-          ? 'バーコードは読み取れましたが、カタログ内に同じ品番の商品が複数あるため直接確定せず、写真検索を行います。'
-          : 'バーコードは読み取れましたが、公式商品ページの有効な品番と一致する商品が見つからないため、写真検索を行います。';
+        photoStatus.className='status error';
+        photoStatus.textContent=exactMatches.length>1
+          ? 'バーコードは読み取れましたが、公式品番が重複しています。管理者に確認してください。'
+          : 'バーコードは読み取れましたが、公式商品ページの品番と一致する商品がありません。別商品は表示しません。';
+        return;
       }else if(scannedCode){
         barcodeNotice='バーコードを読み取りましたが、EAN-13のチェックデジットが一致しないため、写真検索を行います。';
       }
