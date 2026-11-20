@@ -1,0 +1,39 @@
+name: Audit Francfranc product variants (read only)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/audit-variants-test.mjs'
+      - '.github/workflows/audit-product-variants.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: francfranc-variant-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Audit official pages for product variants
+        env:
+          AUDIT_LIMIT: '500'
+          AUDIT_DELAY_MS: '900'
+        run: node scripts/audit-variants-test.mjs
+      - name: Upload read-only audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: francfranc-product-variant-audit
+          path: test/variant-audit.json
+          if-no-files-found: error
+          retention-days: 14
