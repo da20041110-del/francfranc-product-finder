@@ -1,0 +1,29 @@
+name: Probe official URLs for product variants (read only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/probe-variant-urls.mjs'
+      - '.github/workflows/probe-variant-urls.yml'
+permissions:
+  contents: read
+concurrency:
+  group: francfranc-variant-url-probe
+  cancel-in-progress: false
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probe variant SKU URLs against official visible codes
+        run: node scripts/probe-variant-urls.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: francfranc-variant-url-probe
+          path: test/variant-url-probe.json
+          if-no-files-found: error
+          retention-days: 14
