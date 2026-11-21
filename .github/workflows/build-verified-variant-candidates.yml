@@ -1,0 +1,29 @@
+name: Build verified variant candidate dataset (test only)
+on:
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: francfranc-variant-url-probe
+          run-id: 44848634539
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: test/input
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build fail-closed candidate dataset
+        run: node scripts/build-verified-variant-candidates.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: francfranc-verified-variant-candidates-test
+          path: |
+            test/verified-variant-candidates.json
+            test/verified-variant-candidate-report.json
+          retention-days: 14
