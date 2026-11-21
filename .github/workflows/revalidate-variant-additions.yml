@@ -1,0 +1,35 @@
+name: Build revalidated variant additions (test only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/revalidate-variant-additions.mjs'
+      - '.github/workflows/revalidate-variant-additions.yml'
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: francfranc-variant-catalog-diff-test
+          run-id: 44876212152
+          github-token: \${{ secrets.GITHUB_TOKEN }}
+          path: test/input
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Re-fetch official pages and validate additions
+        run: node scripts/revalidate-variant-additions.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: francfranc-revalidated-variant-additions-test
+          path: |
+            test/variant-catalog-additions.json
+            test/variant-catalog-additions-report.json
+          retention-days: 14
