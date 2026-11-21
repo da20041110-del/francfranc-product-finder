@@ -6,12 +6,12 @@ import fs from "node:fs/promises";
 const catalog=JSON.parse(await fs.readFile("catalog.json","utf8"));
 const candidates=JSON.parse(await fs.readFile("test/input/verified-variant-candidates.json","utf8"));
 const products=Array.isArray(catalog.products)?catalog.products:[];
-const existingCodes=new Set(products.map(p=>String(p.itemCode||"")).filter(x=>/^\\d{13}$/.test(x)));
+const existingCodes=new Set(products.map(p=>String(p.itemCode||"")).filter(x=>/^\d{13}$/.test(x)));
 const existingUrls=new Set(products.map(p=>String(p.url||"")).filter(Boolean));
 const byCode=new Map();
 for(const c of candidates){
  const code=String(c.itemCode||"");
- if(!/^\\d{13}$/.test(code)||c.itemCodeSource!=="visible_label"||c.verifiedCode!==true||c.codeStatus!=="normal")continue;
+ if(!/^\d{13}$/.test(code)||c.itemCodeSource!=="visible_label"||c.verifiedCode!==true||c.codeStatus!=="normal")continue;
  if(!byCode.has(code))byCode.set(code,c);
 }
 const newCandidates=[...byCode.values()].filter(c=>!existingCodes.has(c.itemCode));
@@ -34,6 +34,6 @@ const report={
  safety:"Comparison only. No production catalog edits. New candidates still require official page re-fetch and title/image/price validation before being eligible for test catalog integration."
 };
 await fs.mkdir("test",{recursive:true});
-await fs.writeFile("test/variant-catalog-diff.json",JSON.stringify({report,newCandidates},null,2)+"\\n");
-await fs.writeFile("test/variant-catalog-diff-report.json",JSON.stringify(report,null,2)+"\\n");
+await fs.writeFile("test/variant-catalog-diff.json",JSON.stringify({report,newCandidates},null,2)+"\n");
+await fs.writeFile("test/variant-catalog-diff-report.json",JSON.stringify(report,null,2)+"\n");
 console.log(JSON.stringify(report,null,2));
