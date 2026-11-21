@@ -3,7 +3,7 @@ const input="test/input/variant-url-probe.json";
 const output="test/verified-variant-candidates.json";
 const audit=JSON.parse(await fs.readFile(input,"utf8"));
 function validEan13(code){
- if(!/^\\d{13}$/.test(String(code||"")))return false;
+ if(!/^\d{13}$/.test(String(code||"")))return false;
  const d=[...code].map(Number);
  return (10-d.slice(0,12).reduce((s,n,i)=>s+n*(i%2===0?1:3),0)%10)%10===d[12];
 }
