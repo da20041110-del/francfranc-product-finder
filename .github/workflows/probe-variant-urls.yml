@@ -1,4 +1,4 @@
-name: Probe official URLs for product variants (read only)
+name: Full-catalog variant URL audit (read only)
 on:
   push:
     branches: [main]
@@ -8,18 +8,18 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: francfranc-variant-url-probe
+  group: francfranc-full-variant-url-audit
   cancel-in-progress: false
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Probe variant SKU URLs against official visible codes
+      - name: Probe all catalog pages and variant SKU URLs
         run: node scripts/probe-variant-urls.mjs
       - uses: actions/upload-artifact@v4
         with:
