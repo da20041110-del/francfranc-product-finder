@@ -1,0 +1,82 @@
+name: Build verified catalog additions (test only)
+
+on:
+  push:
+    branches:
+      - "test/catalog-additions-single-workflow"
+    paths:
+      - "scripts/prepare-catalog-additions-test.mjs"
+      - ".github/workflows/build-catalog-additions-test.yml"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "scripts/prepare-catalog-additions-test.mjs"
+      - ".github/workflows/build-catalog-additions-test.yml"
+      - "scripts/build-catalog.mjs"
+      - "scripts/build-image-features.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: francfranc-catalog-additions-test
+  cancel-in-progress: false
+
+jobs:
+  build-test-catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Preserve the existing production catalog and image features
+        run: |
+          mkdir -p baseline test
+          cp catalog.json baseline/catalog.json
+          cp image-features.json baseline/image-features.json
+
+      - name: Verify official item-code parser safety rules
+        run: node scripts/build-catalog.mjs --self-test
+
+      - name: Re-fetch currently listed official product pages
+        run: node scripts/build-catalog.mjs --all
+
+      - name: Compare with baseline and build additions-only test catalog
+        run: node scripts/prepare-catalog-additions-test.mjs
+
+      - name: Prepare the test catalog for image feature extraction
+        run: |
+          cp test/catalog.json catalog.json
+          cp baseline/image-features.json image-features.json
+
+      - name: Install image feature extraction dependency
+        run: npm install --no-save --no-package-lock @xenova/transformers@2.17.2
+
+      - name: Build reusable image features for the test catalog
+        run: node scripts/build-image-features.mjs
+
+      - name: Place generated image features beside the test catalog
+        run: cp image-features.json test/image-features.json
+
+      - name: Print test-only validation summary
+        run: |
+          node --input-type=module -e "import fs from 'node:fs'; const r=JSON.parse(fs.readFileSync('test/catalog-additions-report.json','utf8')); const f=JSON.parse(fs.readFileSync('test/image-features.json','utf8')); console.log(JSON.stringify({...r.comparison, baselineProducts:r.baseline.productRecords, freshScanPages:r.freshOfficialScan.attemptedUrls, freshValidCodes:r.freshOfficialScan.uniqueValidVisibleOfficialCodes, imageFeatures:Object.keys(f.features||{}).length},null,2));"
+
+      - name: Upload test catalog and validation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: francfranc-verified-catalog-additions-test
+          path: |
+            test/catalog.json
+            test/catalog-additions.json
+            test/catalog-additions-report.json
+            test/image-features.json
+          if-no-files-found: error
+          retention-days: 14
