@@ -1,7 +1,14 @@
 name: Build verified catalog additions (test only)
 
 on:
+  push:
+    branches:
+      - "test/catalog-additions-single-workflow"
+    paths:
+      - "scripts/prepare-catalog-additions-test.mjs"
+      - ".github/workflows/build-catalog-additions-test.yml"
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "scripts/prepare-catalog-additions-test.mjs"
       - ".github/workflows/build-catalog-additions-test.yml"
