@@ -61,7 +61,7 @@ for(let i=0;i<selected.length;i++){
   const res=await get(url),html=res.ok?await res.text():"",codes=res.ok?visibleCodes(html):[];
   const rawTitle=(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)||[])[1]||"";
   const title=decode(rawTitle.replace(/<[^>]+>/g," ")).replace(/\s+/g," ").trim();
-  rows.push({sku:v.sku,variantTitle:v.title,option1:v.option1,option2:v.option2,option3:v.option3,sourceTitle:v.sourceTitle,sourceUrl:v.sourceUrl,url,status:res.status,finalUrl:res.url,title,visibleOfficialCodes:codes,skuEqualsOfficialCode:codes.includes(v.sku),titleLooksRelated:!!title&&!!v.sourceTitle&&(title.includes(v.sourceTitle)||v.sourceTitle.includes(title.split("|")[0].trim()),statusClass:!res.ok?"http_error":codes.includes(v.sku)?"confirmed_exact_official_code":codes.length?"official_code_differs":"no_visible_official_code"});
+  rows.push({sku:v.sku,variantTitle:v.title,option1:v.option1,option2:v.option2,option3:v.option3,sourceTitle:v.sourceTitle,sourceUrl:v.sourceUrl,url,status:res.status,finalUrl:res.url,title,visibleOfficialCodes:codes,skuEqualsOfficialCode:codes.includes(v.sku),titleLooksRelated:!!title&&!!v.sourceTitle&&(title.includes(v.sourceTitle)||v.sourceTitle.includes(title.split("|")[0].trim())),statusClass:!res.ok?"http_error":codes.includes(v.sku)?"confirmed_exact_official_code":codes.length?"official_code_differs":"no_visible_official_code"});
  }catch(e){rows.push({sku:v.sku,url,statusClass:"fetch_failed",error:String(e)});}
  if(i<selected.length-1)await sleep(DELAY);
  if((i+1)%100===0)console.log("Variant URLs probed",i+1,"/",selected.length);
