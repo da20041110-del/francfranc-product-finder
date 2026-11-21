@@ -6,7 +6,7 @@ const OUT_DIR = "test";
 const readJson = async path => JSON.parse(await fs.readFile(path, "utf8"));
 const isEan13 = value => {
   const code = String(value || "");
-  if (!/^\\d{13}$/.test(code)) return false;
+  if (!/^\d{13}$/.test(code)) return false;
   const digits = [...code].map(Number);
   const sum = digits.slice(0, 12).reduce((total, digit, index) => total + digit * (index % 2 === 0 ? 1 : 3), 0);
   return (10 - (sum % 10)) % 10 === digits[12];
