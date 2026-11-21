@@ -1,5 +1,10 @@
 name: Build verified variant candidate dataset (test only)
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/build-verified-variant-candidates.mjs'
+      - '.github/workflows/build-verified-variant-candidates.yml'
   workflow_dispatch:
 permissions:
   actions: read
