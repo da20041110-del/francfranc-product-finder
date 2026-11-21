@@ -134,7 +134,7 @@ await fs.writeFile(`${OUT_DIR}/catalog-additions.json`, JSON.stringify({
   attempted: additions.length,
   found: additions.length,
   products: additions
-}, null, 2) + "\\n");
+}, null, 2) + "\n");
 await fs.writeFile(`${OUT_DIR}/catalog.json`, JSON.stringify({
   ...baseline,
   generatedAt: report.generatedAt,
@@ -142,8 +142,8 @@ await fs.writeFile(`${OUT_DIR}/catalog.json`, JSON.stringify({
   attempted: (baseline.attempted || 0) + additions.length,
   found: testProducts.length,
   products: testProducts
-}, null, 2) + "\\n");
-await fs.writeFile(`${OUT_DIR}/catalog-additions-report.json`, JSON.stringify(report, null, 2) + "\\n");
+}, null, 2) + "\n");
+await fs.writeFile(`${OUT_DIR}/catalog-additions-report.json`, JSON.stringify(report, null, 2) + "\n");
 console.log(JSON.stringify(report.comparison, null, 2));
 if (!additions.length) {
   console.warn("No additions passed all official-code, name, price, and image checks. Production data remains untouched.");
