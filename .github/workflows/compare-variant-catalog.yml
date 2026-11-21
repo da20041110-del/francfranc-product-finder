@@ -1,0 +1,34 @@
+name: Compare verified variant candidates with current catalog (test only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/compare-variant-catalog.mjs'
+      - '.github/workflows/compare-variant-catalog.yml'
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: francfranc-verified-variant-candidates-test
+          run-id: 44875907414
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: test/input
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Compare with current production catalog
+        run: node scripts/compare-variant-catalog.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: francfranc-variant-catalog-diff-test
+          path: |
+            test/variant-catalog-diff.json
+            test/variant-catalog-diff-report.json
+          retention-days: 14
