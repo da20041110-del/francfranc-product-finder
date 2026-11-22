@@ -29,7 +29,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
-          path: production-source
 
       - name: Download the verified test-only catalog artifact
         env:
@@ -44,8 +43,8 @@ jobs:
           mkdir -p test
           cp testdata/catalog.json test/catalog.json
           cp testdata/image-features.json test/image-features.json
-          cp production-source/index.html test/index.html
-          cp production-source/apple-touch-icon.png test/apple-touch-icon.png
+          cp index.html test/index.html
+          cp apple-touch-icon.png test/apple-touch-icon.png
           python - <<'PY'
           from pathlib import Path
           p = Path("test/index.html")
