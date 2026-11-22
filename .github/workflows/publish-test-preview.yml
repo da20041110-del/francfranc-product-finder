@@ -1,0 +1,88 @@
+name: Prepare isolated live test preview
+
+on:
+  push:
+    branches:
+      - "test/catalog-additions-single-workflow"
+    paths:
+      - ".github/workflows/publish-test-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+concurrency:
+  group: francfranc-test-preview
+  cancel-in-progress: false
+
+jobs:
+  prepare-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out production app source without changing it
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: production-source
+
+      - name: Download the verified test-only catalog artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 44876987771 --repo "${GITHUB_REPOSITORY}" \
+            --name francfranc-verified-catalog-additions-test \
+            --dir testdata
+
+      - name: Assemble isolated preview under /test/
+        run: |
+          mkdir -p test
+          cp testdata/catalog.json test/catalog.json
+          cp testdata/image-features.json test/image-features.json
+          cp production-source/index.html test/index.html
+          cp production-source/apple-touch-icon.png test/apple-touch-icon.png
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("test/index.html")
+          s = p.read_text(encoding="utf-8")
+          s = s.replace('<title>Francfranc 商品検索</title>', '<title>【テスト版】Francfranc 商品検索</title>')
+          s = s.replace('href="./apple-touch-icon.png?v=2"', 'href="./apple-touch-icon.png?v=test1"')
+          s = s.replace('href="./apple-touch-icon.png?v=2"', 'href="./apple-touch-icon.png?v=test1"')
+          banner = """<div style="position:sticky;top:0;z-index:2000;background:#8b4d42;color:#fff;text-align:center;padding:10px 12px;font-size:13px;font-weight:700">テスト専用版 ｜ 本番データ・本番アプリには影響しません</div>"""
+          s = s.replace("<body>", "<body>\n" + banner, 1)
+          p.write_text(s, encoding="utf-8")
+          PY
+          test -s test/catalog.json
+          test -s test/image-features.json
+          test -s test/index.html
+          node - <<'NODE'
+          const fs=require('fs');
+          const c=JSON.parse(fs.readFileSync('test/catalog.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('test/image-features.json','utf8'));
+          if(!Array.isArray(c.products)||!c.products.length) throw new Error('catalog missing products');
+          if(!f.features||!Object.keys(f.features).length) throw new Error('image features missing');
+          console.log('Preview catalog:',c.products.length,'products; image features:',Object.keys(f.features).length);
+          NODE
+
+      - name: Create a reviewable PR containing only the isolated preview
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ github.token }}
+          base: main
+          branch: automation/francfranc-test-preview
+          delete-branch: true
+          add-paths: |
+            test/index.html
+            test/catalog.json
+            test/image-features.json
+            test/apple-touch-icon.png
+          commit-message: "Add isolated Francfranc test preview"
+          title: "Add isolated Francfranc test preview"
+          body: |
+            This PR adds a separate /test/ preview using the verified test-only catalog artifact from workflow run 44876987771.
+
+            - Production root app and production catalog are unchanged.
+            - Test preview assets are isolated under test/.
+            - The page displays a prominent test-only banner.
+            - Merge only after checking the generated files and Pages deployment behavior.
