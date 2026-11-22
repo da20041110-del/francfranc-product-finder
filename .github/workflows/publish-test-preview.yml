@@ -6,6 +6,10 @@ on:
       - "test/catalog-additions-single-workflow"
     paths:
       - ".github/workflows/publish-test-preview.yml"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - ".github/workflows/publish-test-preview.yml"
   workflow_dispatch:
 
 permissions:
