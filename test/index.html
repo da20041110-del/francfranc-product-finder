@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<base href="../">
-<link rel="icon" type="image/png" sizes="180x180" href="./apple-touch-icon.png?v=2">
-<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=2">
-<title>Francfranc 商品検索</title>
+<link rel="icon" type="image/png" sizes="180x180" href="./apple-touch-icon.png?v=test1">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=test1">
+<title>【テスト版】Francfranc 商品検索</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f7f6f4;color:#333;font-family:Arial,"Noto Sans JP",sans-serif}
@@ -66,6 +65,7 @@ footer{padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
 </style>
 </head>
 <body>
+<div style="position:sticky;top:0;z-index:2000;background:#8b4d42;color:#fff;text-align:center;padding:10px 12px;font-size:13px;font-weight:700">テスト専用版 ｜ 本番データ・本番アプリには影響しません</div>
 <button type="button" id="clearApp" onclick="window.location.href=window.location.pathname+'?reset='+Date.now()" aria-label="写真と検索結果をクリア" title="写真と検索結果をクリア" style="position:fixed!important;right:18px!important;bottom:calc(22px + env(safe-area-inset-bottom,0px))!important;top:auto!important;left:auto!important;z-index:2147483647!important;width:58px!important;height:58px!important;min-width:58px!important;min-height:58px!important;margin:0!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#333!important;color:#fff!important;border:2px solid #fff!important;border-radius:50%!important;font-size:14px!important;font-weight:700!important;box-shadow:0 3px 12px rgba(0,0,0,.3)!important">クリア</button>
 <header>
 <h1>Francfranc</h1>
@@ -269,89 +269,34 @@ function getSeriesKey(title=''){
   s=s.replace(/(ミニ|スモール|レギュラー|ラージ|small|medium|large)/g,'');
   return s;
 }
-function titleSimilarityScore(a,b){
-  if(!a||!b)return 0;
-  if(a===b)return 1;
-  // Character bigram Dice similarity works for Japanese names without spaces.
-  const bigrams=value=>{
-    const chars=Array.from(value);
-    if(chars.length===1)return [chars[0]];
-    const out=[];
-    for(let i=0;i<chars.length-1;i++)out.push(chars[i]+chars[i+1]);
-    return out;
-  };
-  const aa=bigrams(a),bb=bigrams(b);
-  const counts=new Map();
-  for(const item of aa)counts.set(item,(counts.get(item)||0)+1);
-  let overlap=0;
-  for(const item of bb){
-    const count=counts.get(item)||0;
-    if(count>0){overlap++;counts.set(item,count-1);}
-  }
-  const dice=(2*overlap)/(aa.length+bb.length);
-  // Coverage measures how much of the shorter title is represented in the
-  // longer title. This is more forgiving when one listing adds descriptors.
-  const coverage=overlap/Math.min(aa.length,bb.length);
-  const shorter=a.length<=b.length?a:b;
-  const longer=a.length>b.length?a:b;
-  const containment=longer.includes(shorter)?shorter.length/longer.length:0;
-  return Math.max(dice,coverage,containment);
-}
 function renderRelatedVariants(product){
   const key=getSeriesKey(product.title||'');
-  const validCatalog=catalogProducts.map(p=>{
-    const candidateKey=getSeriesKey(p.title||'');
-    return {...p,_seriesKey:candidateKey};
-  }).filter(p=>p._seriesKey.length>=2);
-  let specificMatchCount=0;
-  let broadMatchCount=0;
-  let fuzzyMatchCount=0;
-  const related=validCatalog.map(p=>{
-    if(p.url===product.url)return null;
-    const candidateKey=p._seriesKey;
-    const shorter=key.length<=candidateKey.length?key:candidateKey;
-    const longer=key.length>candidateKey.length?key:candidateKey;
-    let commonPrefix=0;
-    while(commonPrefix<shorter.length&&shorter[commonPrefix]===longer[commonPrefix])commonPrefix++;
-    const targetCoverage=key.length?commonPrefix/key.length:0;
-    const shorterCoverage=shorter.length?commonPrefix/shorter.length:0;
-    const fullScore=titleSimilarityScore(key,candidateKey);
-    // A specific match carries at least 70% of the selected product name
-    // from its beginning. Shorter shared series names are a lower tier.
-    const specificMatch=targetCoverage>=0.70;
-    const broadMatch=!specificMatch&&shorterCoverage>=0.70&&commonPrefix>=3;
-    const fuzzyMatch=fullScore>=0.70;
-    if(specificMatch)specificMatchCount++;
-    else if(broadMatch)broadMatchCount++;
-    if(fuzzyMatch)fuzzyMatchCount++;
-    if(!specificMatch&&!broadMatch&&!fuzzyMatch)return null;
-    const tier=specificMatch?0:(broadMatch?1:2);
-    return {...p,relatedScore:Math.max(targetCoverage,fullScore),targetCoverage,commonPrefix,fullScore,exactFamily:candidateKey===key,specificMatch,broadMatch,tier};
-  }).filter(Boolean).sort((a,b)=>{
-    if(a.tier!==b.tier)return a.tier-b.tier;
-    if(a.tier===0&&a.exactFamily!==b.exactFamily)return a.exactFamily?-1:1;
-    if(a.commonPrefix!==b.commonPrefix)return b.commonPrefix-a.commonPrefix;
-    return b.relatedScore-a.relatedScore;
-  }).slice(0,5);
+  const productCode=String(getProductCode(product)||'').replace(/\D/g,'');
+  if(key.length<4 && productCode.length<8)return '';
+  // First use normalized shared product-family title. If that misses, use the
+  // shared JAN/POS prefix as a conservative fallback for color variants.
+  let related=catalogProducts.filter(p=>p.url!==product.url&&p.image&&getSeriesKey(p.title||'')===key);
+  if(!related.length && productCode.length>=11){
+    const prefix=productCode.slice(0,11);
+    related=catalogProducts.filter(p=>{
+      const code=String(getProductCode(p)||'').replace(/\D/g,'');
+      return p.url!==product.url&&p.image&&code.length===13&&code.slice(0,11)===prefix;
+    });
+  }
+  related=related.slice(0,5);
+  if(!related.length)return '';
   const cards=related.map(p=>{
     const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
-    const percent=Math.round(p.relatedScore*100);
-    const type=p.tier===0?(p.exactFamily?'同シリーズ・色違い':'商品名の高一致'):p.tier===1?'シリーズ名一致':'その他の類似商品';
     return '<div style="min-width:112px;max-width:132px;flex:1;border:1px solid #e5e1dd;border-radius:8px;padding:8px;background:#fff">'+
       (p.image?'<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;height:92px;object-fit:contain">':'')+
-      '<div style="font-size:10px;color:#8b6b5d;margin:4px 0">'+type+' · '+percent+'%</div>'+
       '<div style="font-size:12px;line-height:1.4;font-weight:600;margin:5px 0">'+escapeHtml(p.title||'商品名未取得')+'</div>'+
       '<div style="font-size:12px">価格：'+escapeHtml(price)+'</div>'+
       '<a style="font-size:12px;display:inline-block;margin-top:5px" href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式ページ</a></div>';
   }).join('');
-  const diagnostic='比較対象 '+catalogProducts.length+'件 / 有効な商品名 '+validCatalog.length+'件 / 商品名高一致 '+specificMatchCount+'件 / シリーズ一致 '+broadMatchCount+'件 / 全体類似 '+fuzzyMatchCount+'件 / 表示 '+related.length+'件';
-  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・類似商品</strong>'+
-    '<p style="font-size:12px;margin:5px 0 8px">商品名の先頭からの一致範囲が長い候補を優先し、シリーズ名だけの一致はその下に表示します。色やサイズは公式ページで確認してください。</p>'+
-    (cards?'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div>':'<p style="font-size:13px;margin:8px 0">一致候補はありませんでした。</p>')+
-    '<p style="font-size:10px;color:#777;margin:8px 0 0">診断：'+diagnostic+'</p></section>';
+  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・サイズ違い</strong><p style="font-size:12px;margin:5px 0 8px">商品名が近い掲載商品です。色やサイズは公式ページで確認してください。</p><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div></section>';
 }
 function normalizeJapaneseSearch(value=''){
-  let text=String(value).normalize('NFKC').toLocaleLowerCase('ja').replace(/\s/g,'').replace(/[　・･‐‑‒–—―ー_/.,、。()（）［］【】「」『』]/g,'');
+  let text=String(value).normalize('NFKC').toLocaleLowerCase('ja').replace(/[\\s　・･‐‑‒–—―ー_/.,、。()（）［］【】「」『』]/g,'');
   // Normalize katakana to hiragana so either script can find the same product name.
   return text.replace(/[ァ-ヶ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0x60));
 }
@@ -486,7 +431,7 @@ fetch('./catalog.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('ca
   catalogProducts=Array.isArray(data.products)?data.products:[];
   catalogDataGeneratedAt=data.generatedAt||null;
   const withImage=catalogProducts.filter(p=>p.image).length;
-  const withCode=catalogProducts.filter(p=>/^\d{13}$/.test(getProductCode(p))).length;
+  const withCode=catalogProducts.filter(p=>/^\\d{13}$/.test(getProductCode(p))).length;
   catalogStatus.textContent='カタログ取得日時：'+(data.generatedAt||'不明')+' / 取得URL '+(data.attempted??'?')+'件、商品データ '+catalogProducts.length+'件（画像 '+withImage+'件・13桁品番 '+withCode+'件）';
   renderCatalog();
 }).catch(err=>{catalogStatus.textContent='カタログを読み込めませんでした（'+(err?.message||'通信エラー')+'）。通信を確認してページを開き直してください。';}).finally(()=>clearTimeout(catalogLoadTimer));
@@ -539,16 +484,29 @@ window.addEventListener('resize',syncCameraFrame);
 document.getElementById('takePhoto').addEventListener('click',async()=>{
   const vw=cameraVideo.videoWidth,vh=cameraVideo.videoHeight;
   if(!vw||!vh){photoStatus.textContent='カメラ映像を準備中です。少し待ってから撮影してください。';return;}
-  // Keep the entire camera frame: a square crop can cut off a horizontal EAN-13 barcode.
-  cameraCanvas.width=vw;cameraCanvas.height=vh;
+  const stage=document.querySelector('.camera-stage');
+  const frame=document.querySelector('.camera-frame');
+  const stageRect=stage.getBoundingClientRect();
+  const frameRect=frame.getBoundingClientRect();
+  const scale=Math.min(stageRect.width/vw,stageRect.height/vh);
+  const renderedW=vw*scale,renderedH=vh*scale;
+  const offsetX=(stageRect.width-renderedW)/2;
+  const offsetY=(stageRect.height-renderedH)/2;
+  const left=(frameRect.left-stageRect.left-offsetX)/scale;
+  const top=(frameRect.top-stageRect.top-offsetY)/scale;
+  const width=frameRect.width/scale,height=frameRect.height/scale;
+  const sx=Math.max(0,Math.round(left)),sy=Math.max(0,Math.round(top));
+  const sw=Math.max(1,Math.min(vw-sx,Math.round(width)));
+  const sh=Math.max(1,Math.min(vh-sy,Math.round(height)));
+  cameraCanvas.width=sw;cameraCanvas.height=sh;
   const ctx=cameraCanvas.getContext('2d');
   if(!ctx){photoStatus.textContent='撮影画像を作成できませんでした。';return;}
-  ctx.drawImage(cameraVideo,0,0,vw,vh);
-  const blob=await new Promise(resolve=>cameraCanvas.toBlob(resolve,'image/jpeg',0.94));
+  ctx.drawImage(cameraVideo,sx,sy,sw,sh,0,0,sw,sh);
+  const blob=await new Promise(resolve=>cameraCanvas.toBlob(resolve,'image/jpeg',0.92));
   if(!blob){photoStatus.textContent='撮影画像を作成できませんでした。';return;}
   const capturedFile=new File([blob],'product-photo.jpg',{type:'image/jpeg',lastModified:Date.now()});
   await stopCamera();
-  handlePhotoFile(capturedFile,'撮影画像を読み込みました。商品またはバーコード全体が写っているか確認してから検索してください。');
+  handlePhotoFile(capturedFile,'画面の枠に合わせて切り抜きました。商品全体が写っているか確認してから検索してください。');
 });
 if(libraryPick)libraryPick.addEventListener('click',()=>libraryFile.click());
 function handlePhotoFile(f,message){
@@ -579,6 +537,31 @@ function handlePhotoFile(f,message){
     photoStatus.textContent='この写真形式 ('+(f.type||'形式不明')+') を表示できませんでした。iPhoneの写真設定で「互換性優先」にして撮影した写真、またはスクリーンショットを選んでください。';
   };
   photo.src=url;
+}
+async function ensureSelectedPhotoPreview(photoFile=selectedPhotoFile){
+  if(!photoFile)return false;
+  photo.hidden=false;
+  const currentSrc=photo.getAttribute('src');
+  if(currentSrc&&photo.complete&&photo.naturalWidth>0){
+    photo.style.display='block';
+    return true;
+  }
+  return await new Promise(resolve=>{
+    if(photo.dataset.url){URL.revokeObjectURL(photo.dataset.url);delete photo.dataset.url;}
+    const previewUrl=URL.createObjectURL(photoFile);
+    photo.dataset.url=previewUrl;
+    photo.onload=()=>{
+      photo.hidden=false;
+      photo.style.display='block';
+      resolve(true);
+    };
+    photo.onerror=()=>{
+      photo.hidden=false;
+      photo.style.display='block';
+      resolve(false);
+    };
+    photo.src=previewUrl;
+  });
 }
 function handlePhotoChange(input){
   const f=input.files&&input.files[0];
@@ -769,6 +752,12 @@ search.addEventListener('click',async()=>{
   if(imageSearchBusy){photoStatus.textContent='すでに検索処理中です。少し待ってください。';return;}
   const photoFile=selectedPhotoFile;
   if(!photoFile){photoStatus.textContent='先に商品写真を選んでください。';return;}
+  const previewReady=await ensureSelectedPhotoPreview(photoFile);
+  if(!previewReady){
+    photoStatus.className='status error';
+    photoStatus.textContent='撮影した商品写真のプレビューを読み込めませんでした。写真を選び直してください。';
+    return;
+  }
   if(!catalogProducts.length){photoStatus.className='status error';photoStatus.textContent='商品カタログが読み込まれていません。少し待ってから再読み込みしてください。';return;}
   imageSearchBusy=true;stopImageSearch=false;search.disabled=true;
   // Start model loading and query-photo analysis while the precomputed catalog vectors finish loading.
@@ -808,9 +797,11 @@ search.addEventListener('click',async()=>{
           photoStatus.textContent='バーコードを読み取り、公式商品ページの品番と照合しました。';
           return;
         }
-        barcodeNotice=exactMatches.length>1
-          ? 'バーコードは読み取れましたが、カタログ内に同じ品番の商品が複数あるため直接確定せず、写真検索を行います。'
-          : 'バーコードは読み取れましたが、公式商品ページの有効な品番と一致する商品が見つからないため、写真検索を行います。';
+        photoStatus.className='status error';
+        photoStatus.textContent=exactMatches.length>1
+          ? 'バーコードは読み取れましたが、公式品番が重複しています。管理者に確認してください。'
+          : 'バーコードは読み取れましたが、公式商品ページの品番と一致する商品がありません。別商品は表示しません。';
+        return;
       }else if(scannedCode){
         barcodeNotice='バーコードを読み取りましたが、EAN-13のチェックデジットが一致しないため、写真検索を行います。';
       }
@@ -960,7 +951,7 @@ search.addEventListener('click',async()=>{
       catalogResults.appendChild(card);
     }
     const elapsedSeconds=((performance.now()-searchStartedAt)/1000).toFixed(1);
-    photoStatus.textContent=(barcodeNotice?barcodeNotice+' ':'')+`検索完了。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒です。上位候補から商品を確認してください。`;
+    photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒です。上位候補から商品を確認してください。`;
     catalogResults.style.display='block';
     catalogResults.querySelector('.chooseProduct')?.scrollIntoView({behavior:'smooth',block:'center'});
   }catch(error){
