@@ -801,7 +801,15 @@ search.addEventListener('click',async()=>{
     photoStatus.textContent='バーコードを確認中です…';
     let barcodeNotice='';
     try{
-      const scannedCode=await detectEan13FromPhoto(photo);
+      // Decode from a detached image so ZXing cannot alter the visible preview element.
+      const barcodeImage=new Image();
+      barcodeImage.src=photoUrl;
+      if(typeof barcodeImage.decode==='function')await barcodeImage.decode();
+      else await new Promise((resolve,reject)=>{
+        barcodeImage.onload=resolve;
+        barcodeImage.onerror=()=>reject(new Error('バーコード確認用画像を読み込めませんでした'));
+      });
+      const scannedCode=await detectEan13FromPhoto(barcodeImage);
       if(scannedCode&&/^\d{13}$/.test(scannedCode)&&validJan(scannedCode)){
         const exactMatches=catalogProducts.filter(p=>getProductCode(p)===scannedCode);
         if(exactMatches.length===1&&getCodeStatus(exactMatches[0])==='normal'){
@@ -1005,6 +1013,13 @@ search.addEventListener('click',async()=>{
     catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
   }finally{
     URL.revokeObjectURL(photoUrl);
+    // Preserve the selected photo after search, including early barcode returns.
+    // Do not resurrect it if the user pressed Clear while the search was running.
+    if(selectedPhotoFile===photoFile){
+      try{await ensureSelectedPhotoPreview(photoFile);}catch(previewError){console.warn('検索後の写真プレビューを復元できませんでした。',previewError);}
+      photo.hidden=false;
+      photo.style.display='block';
+    }
     imageSearchBusy=false;search.disabled=false;
   }
 });
