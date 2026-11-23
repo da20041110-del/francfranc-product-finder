@@ -62,17 +62,24 @@ function meta(html, key) {
   return "";
 }
 function imageFor(html, code) {
-  const normalized = html.replace(/\\u0026/gi, "&").replace(/\\\//g, "/").replace(/&amp;/gi, "&");
-  const urls = [...normalized.matchAll(/(?:https?:)?\/\/[^"'\\s<>]+|\/cdn\/shop\/files\/[^"'\\s<>]+/gi)]
+  // Shopify product images may be served from /cdn/shop/products/ on Francfranc,
+  // or from cdn.shopify.com. Scan HTML URL attributes without relying on a
+  // single image-host/path convention.
+  const normalized = html
+    .replace(/\\u0026/gi, "&")
+    .replace(/\\\//g, "/")
+    .replace(/&amp;/gi, "&");
+  const urls = [...normalized.matchAll(/(?:https?:)?\/\/[^"' \t\r\n<>]+|\/cdn\/shop\/(?:files|products)\/[^"' \t\r\n<>]+/gi)]
     .map(match => decode(match[0]).replace(/[),;]+$/, ""));
   const found = [];
   for (const raw of urls) {
     try {
       const url = new URL(raw.startsWith("//") ? "https:" + raw : raw, "https://francfranc.com");
-      if (!/(^|\.)francfranc\.com$/i.test(url.hostname)) continue;
+      const host = url.hostname.toLowerCase();
+      if (host !== "francfranc.com" && host !== "cdn.shopify.com") continue;
       const filename = decodeURIComponent(url.pathname.split("/").pop() || "");
       if (new RegExp("^" + code + "(?:[_-][^/]*)?\\.(?:jpe?g|png|webp|avif)$", "i").test(filename)) {
-        if (url.pathname.includes("/cdn/shop/files/") && url.searchParams.has("width")) url.searchParams.set("width", "1200");
+        if (url.pathname.includes("/cdn/shop/") && url.searchParams.has("width")) url.searchParams.set("width", "1200");
         found.push(url.href);
       }
     } catch {}
