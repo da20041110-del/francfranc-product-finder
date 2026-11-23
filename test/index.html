@@ -899,7 +899,7 @@ search.addEventListener('click',async()=>{
             const blendedScore=cropScores.length
               ? originalScore*0.30+bestCropScore*0.50+secondCropScore*0.20
               : originalScore;
-            scored.push({product:p,score:blendedScore});
+            scored.push({product:p,score:blendedScore,originalScore,bestCropScore,secondCropScore});
           }
         }catch(e){
           failedImageCount++;
@@ -934,6 +934,17 @@ search.addEventListener('click',async()=>{
     searchDiagnostics.className='note';
     searchDiagnostics.textContent='比較対象 '+maxToCheck+'件／比較成功 '+scored.length+'件／画像取得・比較失敗 '+failedImageCount+'件／再利用 '+cachedCount+'件';
     catalogResults.appendChild(searchDiagnostics);
+    // Test-only diagnostic: track the known Music Bird reference product even
+    // when it falls outside the visible top 10, so crop/scoring changes can be
+    // evaluated objectively rather than by visual guesswork.
+    const reference=scored.find(item=>getProductCode(item.product)==='1103130037010');
+    const referenceRank=reference?scored.findIndex(item=>item===reference)+1:0;
+    const referenceNote=document.createElement('p');
+    referenceNote.className='note';
+    referenceNote.textContent=reference
+      ? '基準商品（ミュージックバード／1103130037010）：全'+scored.length+'件中 '+referenceRank+'位、総合 '+(reference.score*100).toFixed(1)+'／元画像 '+(reference.originalScore*100).toFixed(1)+'／最良切り抜き '+(reference.bestCropScore*100).toFixed(1)+'／次点切り抜き '+(reference.secondCropScore*100).toFixed(1)
+      : '基準商品（ミュージックバード／1103130037010）：今回の比較対象に含まれていません。カタログまたは候補条件を確認してください。';
+    catalogResults.appendChild(referenceNote);
     for(const item of top){
       const p=item.product;
       const card=document.createElement('article');card.className='card';card.style.marginTop='12px';
