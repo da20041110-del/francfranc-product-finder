@@ -44,14 +44,12 @@ jobs:
           cp image-features.json baseline/image-features.json
 
       - name: Download the original 3,348-candidate comparison artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh run download 44876212152 --repo "da20041110-del/francfranc-product-finder" \
-            --name francfranc-variant-catalog-diff-test \
-            --dir test/input
-          test -s test/input/variant-catalog-diff.json
-
+        uses: actions/download-artifact@v4
+        with:
+          name: francfranc-variant-catalog-diff-test
+          run-id: 44876212152
+          github-token: ${{ github.token }}
+          path: test/input
       - name: Re-fetch and validate the original 2,892 family-matched candidate pages
         run: node scripts/revalidate-variant-additions.mjs
 
