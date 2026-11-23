@@ -624,20 +624,29 @@ async function createCropDataUrls(file){
     }
     const width=bitmap.width||bitmap.naturalWidth;
     const height=bitmap.height||bitmap.naturalHeight;
-    const side=Math.max(1,Math.round(Math.min(width,height)*0.62));
-    const maxX=Math.max(0,width-side), maxY=Math.max(0,height-side);
-    const positions=[
-      [Math.round(maxX/2),Math.round(maxY/2)],
-      [0,0],[maxX,0],[0,maxY],[maxX,maxY]
+    const baseSide=Math.max(1,Math.min(width,height));
+    // Keep the broad multi-position crops, then add a tighter center crop.
+    // This gives small products inside clear packaging a chance to match without
+    // letting the full package/background dominate every comparison.
+    const cropPlans=[
+      {ratio:0.62,positions:'all'},
+      {ratio:0.46,positions:'center'}
     ];
     const results=[];
-    for(const [sx,sy] of positions){
-      const canvas=document.createElement('canvas');
-      canvas.width=canvas.height=side;
-      const context=canvas.getContext('2d');
-      if(!context)continue;
-      context.drawImage(bitmap,sx,sy,side,side,0,0,side,side);
-      results.push(canvas.toDataURL('image/jpeg',0.88));
+    for(const plan of cropPlans){
+      const side=Math.max(1,Math.round(baseSide*plan.ratio));
+      const maxX=Math.max(0,width-side), maxY=Math.max(0,height-side);
+      const positions=plan.positions==='center'
+        ? [[Math.round(maxX/2),Math.round(maxY/2)]]
+        : [[Math.round(maxX/2),Math.round(maxY/2)],[0,0],[maxX,0],[0,maxY],[maxX,maxY]];
+      for(const [sx,sy] of positions){
+        const canvas=document.createElement('canvas');
+        canvas.width=canvas.height=side;
+        const context=canvas.getContext('2d');
+        if(!context)continue;
+        context.drawImage(bitmap,sx,sy,side,side,0,0,side,side);
+        results.push(canvas.toDataURL('image/jpeg',0.88));
+      }
     }
     return results;
   }finally{
