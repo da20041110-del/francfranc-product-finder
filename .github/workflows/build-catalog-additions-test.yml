@@ -45,9 +45,9 @@ jobs:
 
       - name: Download the original 3,348-candidate comparison artifact
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          gh run download 44876212152 --repo "\${GITHUB_REPOSITORY}" \
+          gh run download 44876212152 --repo "da20041110-del/francfranc-product-finder" \
             --name francfranc-variant-catalog-diff-test \
             --dir test/input
           test -s test/input/variant-catalog-diff.json
