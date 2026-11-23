@@ -54,10 +54,12 @@ function jsonProducts(html) {
   return products;
 }
 function meta(html, key) {
-  const first = html.match(new RegExp('<meta[^>]+(?:property|name)=["\\\\']' + key + '["\\\\'][^>]+content=["\\\\']([^"\\\\']*)["\\\\'][^>]*>', "i"));
-  if (first) return decode(first[1]).trim();
-  const second = html.match(new RegExp('<meta[^>]+content=["\\\\']([^"\\\\']*)["\\\\'][^>]+(?:property|name)=["\\\\']' + key + '["\\\\'][^>]*>', "i"));
-  return second ? decode(second[1]).trim() : "";
+  for (const tag of html.match(/<meta\\b[^>]*>/gi) || []) {
+    const name = tag.match(/(?:property|name)=["']([^"']+)["']/i)?.[1];
+    const content = tag.match(/content=["']([^"']*)["']/i)?.[1];
+    if (name === key && content != null) return decode(content).trim();
+  }
+  return "";
 }
 function imageFor(html, code) {
   const normalized = html.replace(/\\u0026/gi, "&").replace(/\\\//g, "/").replace(/&amp;/gi, "&");
