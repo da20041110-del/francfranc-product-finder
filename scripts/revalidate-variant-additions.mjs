@@ -77,6 +77,8 @@ function imageFor(html, code) {
       const url = new URL(raw.startsWith("//") ? "https:" + raw : raw, "https://francfranc.com");
       const host = url.hostname.toLowerCase();
       if (host !== "francfranc.com" && host !== "cdn.shopify.com") continue;
+      // Keep official Francfranc image URLs HTTPS for the HTTPS PWA.
+      if (host === "francfranc.com" && url.protocol === "http:") url.protocol = "https:";
       const filename = decodeURIComponent(url.pathname.split("/").pop() || "");
       if (new RegExp("^" + code + "(?:[_-][^/]*)?\\.(?:jpe?g|png|webp|avif)$", "i").test(filename)) {
         if (url.pathname.includes("/cdn/shop/") && url.searchParams.has("width")) url.searchParams.set("width", "1200");
