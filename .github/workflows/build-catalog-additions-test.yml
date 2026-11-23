@@ -21,8 +21,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: francfranc-original-variant-revalidation-test
-  cancel-in-progress: false
+  group: francfranc-original-variant-revalidation-v2
+  cancel-in-progress: true
 
 jobs:
   revalidate-original-candidates:
