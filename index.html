@@ -67,6 +67,9 @@ footer{padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
 .result-rank{display:inline-flex;align-items:center;justify-content:center;min-width:38px;padding:3px 7px;margin:0 0 7px;border-radius:6px;background:#eee8e3;color:#51443d;font-size:12px;font-weight:700;line-height:1.35}
 .result-rank.first{background:#b97869;color:#fff}
 .result-rank.provisional{background:#f1eee9;color:#6d625b}
+
+/* Keep the selected source photo visible throughout image search */
+#photo.search-active{display:block!important;visibility:visible!important;opacity:1!important}
 </style>
 </head>
 <body>
@@ -158,6 +161,8 @@ clearAppButton.addEventListener('click',()=>{
   file.value='';
   libraryFile.value='';
   photo.removeAttribute('src');
+  photo.classList.remove('search-active');
+  photo.style.removeProperty('display');
   photo.style.display='none';
   document.getElementById('search').disabled=true;
   photoStatus.className='status';
@@ -543,6 +548,14 @@ function handlePhotoFile(f,message){
   };
   photo.src=url;
 }
+
+function keepSelectedPhotoVisible(){
+  if(!selectedPhotoFile)return;
+  photo.hidden=false;
+  photo.classList.add('search-active');
+  photo.style.setProperty('display','block','important');
+  photo.style.setProperty('visibility','visible','important');
+}
 async function ensureSelectedPhotoPreview(photoFile=selectedPhotoFile){
   if(!photoFile)return false;
   photo.hidden=false;
@@ -752,12 +765,14 @@ function renderBarcodeSearchResult(product,scannedCode){
 }
 search.addEventListener('click',async()=>{
   photoStatus.hidden=false;
+  keepSelectedPhotoVisible();
   photoStatus.className='status';
   photoStatus.textContent='検索ボタンを押しました。カタログと検索機能を確認中…';
   if(imageSearchBusy){photoStatus.textContent='すでに検索処理中です。少し待ってください。';return;}
   const photoFile=selectedPhotoFile;
   if(!photoFile){photoStatus.textContent='先に商品写真を選んでください。';return;}
   const previewReady=await ensureSelectedPhotoPreview(photoFile);
+  keepSelectedPhotoVisible();
   if(!previewReady){
     photoStatus.className='status error';
     photoStatus.textContent='撮影した商品写真のプレビューを読み込めませんでした。写真を選び直してください。';
@@ -795,6 +810,7 @@ search.addEventListener('click',async()=>{
     let barcodeNotice='';
     try{
       const scannedCode=await detectEan13FromPhoto(photo);
+      keepSelectedPhotoVisible();
       if(scannedCode&&/^\d{13}$/.test(scannedCode)&&validJan(scannedCode)){
         const exactMatches=catalogProducts.filter(p=>getProductCode(p)===scannedCode);
         if(exactMatches.length===1&&getCodeStatus(exactMatches[0])==='normal'){
