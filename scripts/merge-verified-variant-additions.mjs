@@ -22,10 +22,10 @@ const featureAdds = new Map();
 const skippedExisting = [];
 for (const p of additions.products) {
   const code = p.itemCode;
-  if (!/^\\d{13}$/.test(code || "")) throw new Error("Invalid 13-digit code: " + code);
+  if (!/^\d{13}$/.test(code || "")) throw new Error("Invalid 13-digit code: " + code);
   if (p.urlItemCode !== code || p.detectedItemCode !== code || p.verifiedCode !== true) throw new Error("Official visible code mismatch or unverified code: " + code);
-  if (!/^https:\\/\\/francfranc\\.com\\/products\\/\\d{13}$/.test(p.url || "")) throw new Error("Non-official or malformed product URL: " + code);
-  if (!/^https:\\/\\/francfranc\\.com\\/cdn\\/shop\\/(files|products)\\//.test(p.image || "")) throw new Error("Non-official or non-HTTPS image URL: " + code);
+  if (!/^https:\/\/francfranc\.com\/products\/\d{13}$/.test(p.url || "")) throw new Error("Non-official or malformed product URL: " + code);
+  if (!/^https:\/\/francfranc\.com\/cdn\/shop\/(files|products)\//.test(p.image || "")) throw new Error("Non-official or non-HTTPS image URL: " + code);
   if (!(Number(p.price) > 0)) throw new Error("Missing/non-positive price: " + code);
   if (seenCandidates.has(code)) throw new Error("Duplicate code in candidate additions: " + code);
   seenCandidates.add(code);
@@ -47,8 +47,8 @@ catalog.visibleLabelCodeCount = (catalog.visibleLabelCodeCount || 0) + accepted.
 catalog.imageMatchedToVisibleCodeCount = (catalog.imageMatchedToVisibleCodeCount || 0) + accepted.length;
 features.generatedAt = new Date().toISOString();
 features.catalogGeneratedAt = catalog.generatedAt;
-fs.writeFileSync(catalogPath, JSON.stringify(catalog, null, 2) + "\\n");
-fs.writeFileSync(featurePath, JSON.stringify(features, null, 2) + "\\n");
+fs.writeFileSync(catalogPath, JSON.stringify(catalog, null, 2) + "\n");
+fs.writeFileSync(featurePath, JSON.stringify(features, null, 2) + "\n");
 const report = {
   productionBaselineProducts: originalCount,
   candidateInput: additions.products.length,
@@ -63,5 +63,5 @@ const report = {
   duplicateCodesInFinalCatalog: catalog.products.length - new Set(catalog.products.map(p => p.itemCode).filter(Boolean)).size
 };
 if (report.duplicateCodesInFinalCatalog !== 0 || !report.allNewProductsHaveFeatures || !report.allNewImageUrlsHttps) throw new Error("Post-merge validation failed: " + JSON.stringify(report));
-fs.writeFileSync("variant-additions-merge-report.json", JSON.stringify(report, null, 2) + "\\n");
+fs.writeFileSync("variant-additions-merge-report.json", JSON.stringify(report, null, 2) + "\n");
 console.log(JSON.stringify(report, null, 2));
