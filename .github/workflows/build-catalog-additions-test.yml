@@ -1,0 +1,85 @@
+name: Revalidate original variant candidates (test only)
+
+on:
+  push:
+    branches:
+      - "test/catalog-additions-single-workflow"
+    paths:
+      - "scripts/revalidate-variant-additions.mjs"
+      - ".github/workflows/build-catalog-additions-test.yml"
+      - "scripts/build-image-features.mjs"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "scripts/revalidate-variant-additions.mjs"
+      - ".github/workflows/build-catalog-additions-test.yml"
+      - "scripts/build-image-features.mjs"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: francfranc-original-variant-revalidation-v2
+  cancel-in-progress: true
+
+jobs:
+  revalidate-original-candidates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check out test branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Preserve production catalog and image features as read-only baseline
+        run: |
+          mkdir -p baseline test/input test
+          cp catalog.json baseline/catalog.json
+          cp image-features.json baseline/image-features.json
+
+      - name: Download the original 3,348-candidate comparison artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: francfranc-variant-catalog-diff-test
+          run-id: 44876212152
+          github-token: ${{ github.token }}
+          path: test/input
+      - name: Re-fetch and validate the original 2,892 family-matched candidate pages
+        run: node scripts/revalidate-variant-additions.mjs
+
+      - name: Prepare the additions-only test catalog for image feature extraction
+        run: |
+          cp test/catalog.json catalog.json
+          cp baseline/image-features.json image-features.json
+
+      - name: Install image feature extraction dependency
+        run: npm install --no-save --no-package-lock @xenova/transformers@2.17.2
+
+      - name: Build reusable image features for the test catalog
+        run: node scripts/build-image-features.mjs
+
+      - name: Place generated image features beside the test catalog
+        run: cp image-features.json test/image-features.json
+
+      - name: Print exact candidate validation summary
+        run: |
+          node --input-type=module -e "import fs from 'node:fs'; const r=JSON.parse(fs.readFileSync('test/variant-catalog-additions-report.json','utf8')); const f=JSON.parse(fs.readFileSync('test/image-features.json','utf8')); console.log(JSON.stringify({...r, rejections:undefined, imageFeatureCount:Object.keys(f.features||{}).length},null,2));"
+
+      - name: Upload isolated test catalog and full validation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: francfranc-original-variant-revalidation-test
+          path: |
+            test/catalog.json
+            test/catalog-additions.json
+            test/variant-catalog-additions.json
+            test/variant-catalog-additions-report.json
+            test/image-features.json
+          if-no-files-found: error
+          retention-days: 14
