@@ -157,6 +157,8 @@ clearAppButton.addEventListener('click',()=>{
   // Stop any in-progress image comparison and release the selected photo URL.
   stopImageSearch=true;
   if(photo.dataset.url){URL.revokeObjectURL(photo.dataset.url);delete photo.dataset.url;}
+  if(barcodePhotoUrl){URL.revokeObjectURL(barcodePhotoUrl);barcodePhotoUrl='';}
+  barcodePhoto.removeAttribute('src');
   selectedPhotoFile=null;
   file.value='';
   libraryFile.value='';
@@ -451,6 +453,9 @@ const libraryFile=document.getElementById('libraryFile');
 const cameraPick=document.getElementById('cameraPick');
 const libraryPick=document.getElementById('libraryPick');
 const photo=document.getElementById('photo');
+// Keep the visible preview separate from the image element used by barcode decoding.
+const barcodePhoto=new Image();
+let barcodePhotoUrl='';
 const search=document.getElementById('search');
 const photoStatus=document.getElementById('photoStatus');
 let selectedPhotoFile=null;
@@ -528,8 +533,11 @@ function handlePhotoFile(f,message){
   photoStatus.className='status';
   photoStatus.textContent='写真を読み込み中です… ('+(f.type||'形式不明')+')';
   if(photo.dataset.url)URL.revokeObjectURL(photo.dataset.url);
+  if(barcodePhotoUrl)URL.revokeObjectURL(barcodePhotoUrl);
   const url=URL.createObjectURL(f);
   photo.dataset.url=url;
+  barcodePhotoUrl=URL.createObjectURL(f);
+  barcodePhoto.src=barcodePhotoUrl;
   photo.onload=()=>{
     photo.style.display='block';
     search.disabled=false;
@@ -761,7 +769,8 @@ function renderBarcodeSearchResult(product,scannedCode){
   card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(product,card));
   catalogResults.appendChild(card);
   catalogStatus.textContent='バーコードと公式商品ページの品番が一致しました。色違い・類似商品も下に表示しています。';
-  // Do not scroll away from the selected source photo while searching.
+  // Bring the verified barcode match into view automatically.
+  catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
 }
 search.addEventListener('click',async()=>{
   photoStatus.hidden=false;
@@ -819,7 +828,7 @@ search.addEventListener('click',async()=>{
     photoStatus.textContent='バーコードを確認中です…';
     let barcodeNotice='';
     try{
-      const scannedCode=await detectEan13FromPhoto(photo);
+      const scannedCode=await detectEan13FromPhoto(barcodePhoto);
       keepSelectedPhotoVisible();
       if(scannedCode&&/^\d{13}$/.test(scannedCode)&&validJan(scannedCode)){
         const exactMatches=catalogProducts.filter(p=>getProductCode(p)===scannedCode);
@@ -984,7 +993,8 @@ search.addEventListener('click',async()=>{
     const elapsedSeconds=((performance.now()-searchStartedAt)/1000).toFixed(1);
     photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒です。上位候補から商品を確認してください。`;
     catalogResults.style.display='block';
-    // Keep the source photo in view; staff can scroll to results manually.
+    // Automatically bring completed results into view for staff.
+    catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){
     console.error(error);
     // Always show usable catalog candidates when AI comparison fails, so the user is not left with an empty result area.
@@ -1010,7 +1020,8 @@ search.addEventListener('click',async()=>{
     }
     photoStatus.textContent='写真の自動比較でエラーが発生しました。参考候補を表示しています。エラー：'+(error?.message||'画像モデルまたは公式画像にアクセスできませんでした。');
     catalogResults.style.display='block';
-    // Keep the source photo in view; staff can scroll to results manually.
+    // Bring fallback candidates into view automatically.
+    catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
   }finally{
     URL.revokeObjectURL(photoUrl);
     imageSearchBusy=false;search.disabled=false;
