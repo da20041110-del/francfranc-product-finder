@@ -766,6 +766,16 @@ function renderBarcodeSearchResult(product,scannedCode){
 search.addEventListener('click',async()=>{
   photoStatus.hidden=false;
   keepSelectedPhotoVisible();
+  // iPhone Safari may scroll the focused search button into view,
+  // making the selected photo appear to vanish. Return the viewport
+  // to the preview immediately after the tap.
+  search.blur();
+  if(selectedPhotoFile){
+    requestAnimationFrame(()=>{
+      keepSelectedPhotoVisible();
+      photo.scrollIntoView({behavior:'auto',block:'center'});
+    });
+  }
   photoStatus.className='status';
   photoStatus.textContent='検索ボタンを押しました。カタログと検索機能を確認中…';
   if(imageSearchBusy){photoStatus.textContent='すでに検索処理中です。少し待ってください。';return;}
