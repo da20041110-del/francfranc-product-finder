@@ -62,6 +62,11 @@ main>p.note{margin-top:0;margin-bottom:18px}
 #clearApp{background:#292522!important}
 footer{padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
 
+
+/* Compact rank labels for image-search results */
+.result-rank{display:inline-flex;align-items:center;justify-content:center;min-width:38px;padding:3px 7px;margin:0 0 7px;border-radius:6px;background:#eee8e3;color:#51443d;font-size:12px;font-weight:700;line-height:1.35}
+.result-rank.first{background:#b97869;color:#fff}
+.result-rank.provisional{background:#f1eee9;color:#6d625b}
 </style>
 </head>
 <body>
@@ -232,6 +237,7 @@ function renderProgressCandidates(scored){
   for(const item of top){
     const p=item.product;
     const card=document.createElement('article');card.className='card';card.style.marginTop='8px';
+    const rank=document.createElement('span');rank.className='result-rank provisional'+(top.indexOf(item)===0?' first':'');rank.textContent='暫定'+(top.indexOf(item)+1)+'位';
     const img=document.createElement('img');img.src=p.image;img.alt=p.title||'商品画像';img.loading='lazy';img.style.cssText='width:100%;max-height:130px;object-fit:contain;background:#f7f6f4;border-radius:8px';
     img.addEventListener('error',()=>img.style.display='none');
     const title=document.createElement('strong');title.textContent=p.title||'商品名未取得';
@@ -246,7 +252,7 @@ function renderProgressCandidates(scored){
       photoStatus.hidden=false;
       photoStatus.textContent='商品をバーコード表示済み。';
     });
-    card.append(img,title,detail,choose);catalogResults.appendChild(card);
+    card.append(rank,img,title,detail,choose);catalogResults.appendChild(card);
   }
 }
 let catalogProducts=[];
@@ -925,7 +931,7 @@ search.addEventListener('click',async()=>{
       const p=item.product;
       const card=document.createElement('article');card.className='card';card.style.marginTop='12px';
       const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
-      card.innerHTML='<h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p>'+codeStatusHtml(p)+'<p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>'+renderRelatedVariants(p);
+      card.innerHTML='<span class="result-rank'+(top.indexOf(item)===0?' first':'')+'">'+(top.indexOf(item)+1)+'位</span><h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title)+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(getProductCode(p)||'未取得')+'</p>'+codeStatusHtml(p)+'<p>'+(item.score===null?'画像の自動比較はできませんでした。':'画像類似度スコア：'+(item.score*100).toFixed(1)+'（参考値）')+'</p><p><a href="'+escapeHtml(p.url)+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>'+renderRelatedVariants(p);
       const productImage=document.createElement('img');
       productImage.src=p.image;
       productImage.alt=p.title||'商品画像';
