@@ -761,7 +761,7 @@ function renderBarcodeSearchResult(product,scannedCode){
   card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(product,card));
   catalogResults.appendChild(card);
   catalogStatus.textContent='バーコードと公式商品ページの品番が一致しました。色違い・類似商品も下に表示しています。';
-  card.scrollIntoView({behavior:'smooth',block:'center'});
+  // Do not scroll away from the selected source photo while searching.
 }
 search.addEventListener('click',async()=>{
   photoStatus.hidden=false;
@@ -984,7 +984,7 @@ search.addEventListener('click',async()=>{
     const elapsedSeconds=((performance.now()-searchStartedAt)/1000).toFixed(1);
     photoStatus.textContent=`検索完了。比較できた画像は${scored.length}件、所要時間は${elapsedSeconds}秒です。上位候補から商品を確認してください。`;
     catalogResults.style.display='block';
-    catalogResults.querySelector('.chooseProduct')?.scrollIntoView({behavior:'smooth',block:'center'});
+    // Keep the source photo in view; staff can scroll to results manually.
   }catch(error){
     console.error(error);
     // Always show usable catalog candidates when AI comparison fails, so the user is not left with an empty result area.
@@ -1010,7 +1010,7 @@ search.addEventListener('click',async()=>{
     }
     photoStatus.textContent='写真の自動比較でエラーが発生しました。参考候補を表示しています。エラー：'+(error?.message||'画像モデルまたは公式画像にアクセスできませんでした。');
     catalogResults.style.display='block';
-    catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
+    // Keep the source photo in view; staff can scroll to results manually.
   }finally{
     URL.revokeObjectURL(photoUrl);
     imageSearchBusy=false;search.disabled=false;
