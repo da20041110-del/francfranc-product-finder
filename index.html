@@ -703,6 +703,30 @@ async function getBarcodeLibrary(){
   }
   return barcodeLibraryPromise;
 }
+async function ensureBarcodePhotoReady(){
+  if(barcodePhoto.complete&&barcodePhoto.naturalWidth>0)return true;
+  if(barcodePhoto.complete&&barcodePhoto.naturalWidth===0)return false;
+  if(typeof barcodePhoto.decode==='function'){
+    try{await barcodePhoto.decode();return barcodePhoto.naturalWidth>0;}catch{}
+  }
+  return await new Promise(resolve=>{
+    let settled=false;
+    const finish=value=>{
+      if(settled)return;
+      settled=true;
+      clearTimeout(timer);
+      barcodePhoto.removeEventListener('load',onLoad);
+      barcodePhoto.removeEventListener('error',onError);
+      resolve(value);
+    };
+    const onLoad=()=>finish(barcodePhoto.naturalWidth>0);
+    const onError=()=>finish(false);
+    const timer=setTimeout(()=>finish(false),5000);
+    barcodePhoto.addEventListener('load',onLoad,{once:true});
+    barcodePhoto.addEventListener('error',onError,{once:true});
+    if(barcodePhoto.complete)finish(barcodePhoto.naturalWidth>0);
+  });
+}
 async function detectEan13FromPhoto(imageElement){
   // Prefer the native detector where available; iOS Safari uses the ZXing fallback.
   if('BarcodeDetector' in window){
@@ -828,7 +852,9 @@ search.addEventListener('click',async()=>{
     photoStatus.textContent='バーコードを確認中です…';
     let barcodeNotice='';
     try{
-      const scannedCode=await detectEan13FromPhoto(barcodePhoto);
+      const barcodeReady=await ensureBarcodePhotoReady();
+      const scannedCode=barcodeReady?await detectEan13FromPhoto(barcodePhoto):'';
+      if(!barcodeReady)barcodeNotice='バーコード画像を読み込めませんでした。写真を選び直してください。';
       keepSelectedPhotoVisible();
       if(scannedCode&&/^\d{13}$/.test(scannedCode)&&validJan(scannedCode)){
         const exactMatches=catalogProducts.filter(p=>getProductCode(p)===scannedCode);
