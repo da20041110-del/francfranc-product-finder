@@ -24,6 +24,11 @@ h2{font-size:18px}
 .camera-stage video{width:100%;height:100%;object-fit:contain}
 .camera-frame{position:absolute;width:min(70%,38vh,340px);aspect-ratio:1;border:2px dashed #fff;border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.28);pointer-events:none}
 .camera-guide .camera-help{font-size:14px;line-height:1.6;text-align:center;max-width:520px;margin:0}
+.camera-mode-switch{display:flex;gap:8px;width:min(100%,520px)}
+.camera-mode-switch button{flex:1;margin:0;padding:11px 8px;background:#555;font-size:14px}
+.camera-mode-switch button.active{background:#fff;color:#222;font-weight:700}
+.camera-stage.barcode-mode .camera-frame{aspect-ratio:3.2/1;border-radius:8px;border-style:solid}
+.camera-stage.product-mode .camera-frame{aspect-ratio:1;border-radius:12px}
 .camera-actions{display:flex;width:min(100%,520px);gap:10px}
 .camera-actions button{flex:1;margin-top:0}
 .camera-actions .secondary{background:#555}
@@ -90,8 +95,10 @@ footer{padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
 
 <img id="photo" alt="撮影した商品写真">
 <div class="camera-guide" id="cameraGuide" role="dialog" aria-modal="true" aria-label="商品撮影">
-<p class="camera-help"><strong>商品全体を白い枠内に収めてください</strong></p>
-<div class="camera-stage"><video id="cameraVideo" autoplay playsinline muted></video><div class="camera-frame" aria-hidden="true"></div></div>
+<p class="camera-help" id="cameraHelp"><strong>商品全体を白い枠内に収めてください</strong></p>
+<div class="camera-mode-switch"><button type="button" id="productCameraMode" class="active">商品写真</button><button type="button" id="barcodeCameraMode">バーコード</button></div>
+<div class="camera-stage product-mode" id="cameraStage"><video id="cameraVideo" autoplay playsinline muted></video><div class="camera-frame" aria-hidden="true"></div></div>
+<p class="camera-help" id="cameraFocusHelp">画面をタップすると、対応機種ではピント合わせを試みます。</p>
 <div class="camera-actions"><button type="button" id="takePhoto">撮影する</button><button type="button" class="secondary" id="closeCamera">戻る</button></div><canvas id="cameraCanvas" hidden></canvas></div>
 
 <button id="search" type="button">この写真から商品を検索</button>
@@ -436,6 +443,37 @@ let cameraStream=null;
 const cameraGuide=document.getElementById('cameraGuide');
 const cameraVideo=document.getElementById('cameraVideo');
 const cameraCanvas=document.getElementById('cameraCanvas');
+const cameraStage=document.getElementById('cameraStage');
+const cameraHelp=document.getElementById('cameraHelp');
+let cameraMode='product';
+function setCameraMode(mode){
+  cameraMode=mode;
+  const barcode=mode==='barcode';
+  cameraStage.classList.toggle('barcode-mode',barcode);
+  cameraStage.classList.toggle('product-mode',!barcode);
+  document.getElementById('productCameraMode').classList.toggle('active',!barcode);
+  document.getElementById('barcodeCameraMode').classList.toggle('active',barcode);
+  cameraHelp.textContent=barcode?'バーコード全体を横向きに白い枠内へ。近づきすぎず、文字と線がはっきり見える距離にしてください。':'商品全体を白い枠内に収めてください。';
+  syncCameraFrame();
+}
+document.getElementById('productCameraMode').addEventListener('click',()=>setCameraMode('product'));
+document.getElementById('barcodeCameraMode').addEventListener('click',()=>setCameraMode('barcode'));
+async function requestCameraFocus(){
+  const track=cameraStream?.getVideoTracks?.()[0];
+  if(!track?.applyConstraints)return;
+  try{
+    const capabilities=track.getCapabilities?.();
+    const modes=capabilities?.focusMode;
+    if(Array.isArray(modes)){
+      if(modes.includes('single-shot'))await track.applyConstraints({advanced:[{focusMode:'single-shot'}]});
+      else if(modes.includes('continuous'))await track.applyConstraints({advanced:[{focusMode:'continuous'}]});
+    }else if(modes?.includes?.('continuous')){
+      await track.applyConstraints({advanced:[{focusMode:'continuous'}]});
+    }
+  }catch(error){console.debug('このカメラでは手動フォーカス要求を利用できません。',error);}
+}
+cameraStage.addEventListener('click',requestCameraFocus);
+
 async function stopCamera(){
   if(cameraStream){cameraStream.getTracks().forEach(track=>track.stop());cameraStream=null;}
   cameraVideo.srcObject=null;
@@ -444,10 +482,12 @@ async function stopCamera(){
 cameraPick.addEventListener('click',async()=>{
   if(!navigator.mediaDevices?.getUserMedia){file.click();return;}
   try{
-    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
     cameraVideo.srcObject=cameraStream;
     cameraGuide.classList.add('open');document.getElementById('clearApp').style.display='none';
     await cameraVideo.play();
+    setCameraMode('product');
+    await requestCameraFocus();
   }catch(error){
     await stopCamera();
     photoStatus.textContent='カメラを起動できませんでした。カメラの使用を許可するか、写真ライブラリから選んでください。';
@@ -464,8 +504,12 @@ function syncCameraFrame(){
   const sw=stage.clientWidth,sh=stage.clientHeight;
   const scale=Math.min(sw/vw,sh/vh);
   const renderedW=vw*scale,renderedH=vh*scale;
-  const side=Math.max(120,Math.min(renderedW*0.88,renderedH*0.72));
-  frame.style.width=side+'px';
+  if(cameraMode==='barcode'){
+    frame.style.width=Math.max(180,Math.min(renderedW*0.9,stage.clientWidth*0.9))+'px';
+  }else{
+    const side=Math.max(120,Math.min(renderedW*0.88,renderedH*0.72));
+    frame.style.width=side+'px';
+  }
 }
 cameraVideo.addEventListener('loadedmetadata',syncCameraFrame);
 window.addEventListener('resize',syncCameraFrame);
@@ -492,9 +536,10 @@ document.getElementById('takePhoto').addEventListener('click',async()=>{
   ctx.drawImage(cameraVideo,sx,sy,sw,sh,0,0,sw,sh);
   const blob=await new Promise(resolve=>cameraCanvas.toBlob(resolve,'image/jpeg',0.92));
   if(!blob){photoStatus.textContent='撮影画像を作成できませんでした。';return;}
-  const capturedFile=new File([blob],'product-photo.jpg',{type:'image/jpeg',lastModified:Date.now()});
+  const isBarcodeMode=cameraMode==='barcode';
+  const capturedFile=new File([blob],isBarcodeMode?'barcode-photo.jpg':'product-photo.jpg',{type:'image/jpeg',lastModified:Date.now()});
   await stopCamera();
-  handlePhotoFile(capturedFile,'画面の枠に合わせて切り抜きました。商品全体が写っているか確認してから検索してください。');
+  handlePhotoFile(capturedFile,isBarcodeMode?'バーコード部分を切り抜きました。線と数字がはっきり写っているか確認して検索してください。':'画面の枠に合わせて切り抜きました。商品全体が写っているか確認してから検索してください。');
 });
 if(libraryPick)libraryPick.addEventListener('click',()=>libraryFile.click());
 function handlePhotoFile(f,message){
