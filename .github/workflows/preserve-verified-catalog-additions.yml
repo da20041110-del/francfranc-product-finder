@@ -1,0 +1,113 @@
+name: Preserve verified Francfranc catalog additions (test PR)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/preserve-verified-catalog-additions.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+  pull-requests: write
+
+concurrency:
+  group: francfranc-preserve-verified-additions
+  cancel-in-progress: false
+
+jobs:
+  prepare-test-pr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out latest main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Download the still-valid validated source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: francfranc-original-variant-revalidation-test
+          path: source-artifact
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 45281717803
+      - name: Build permanent, minimal additions dataset
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const a = JSON.parse(fs.readFileSync('source-artifact/catalog-additions.json','utf8'));
+          const allFeatures = JSON.parse(fs.readFileSync('source-artifact/image-features.json','utf8'));
+          if (!Array.isArray(a.products) || a.products.length !== 2868) throw new Error('Expected 2,868 validated products');
+          const codes = new Set();
+          for (const p of a.products) {
+            if (!/^\\d{13}$/.test(p.itemCode || '') || p.urlItemCode !== p.itemCode || p.detectedItemCode !== p.itemCode || p.verifiedCode !== true) throw new Error('Code verification failed: '+p.itemCode);
+            if (!/^https:\\/\\/francfranc\\.com\\/products\\/\\d{13}$/.test(p.url || '')) throw new Error('Official URL invalid: '+p.itemCode);
+            if (!/^https:\\/\\/francfranc\\.com\\/cdn\\/shop\\/(files|products)\\//.test(p.image || '')) throw new Error('Official image invalid: '+p.itemCode);
+            if (!(Number(p.price) > 0)) throw new Error('Price invalid: '+p.itemCode);
+            if (codes.has(p.itemCode)) throw new Error('Duplicate code: '+p.itemCode);
+            codes.add(p.itemCode);
+          }
+          const urls = [...new Set(a.products.map(p=>p.image))];
+          const subset = {};
+          for (const u of urls) {
+            if (!allFeatures.features?.[u]) throw new Error('Missing image feature: '+u);
+            subset[u] = allFeatures.features[u];
+          }
+          if (Object.keys(subset).length !== urls.length) throw new Error('Feature coverage mismatch');
+          fs.mkdirSync('data/verified-variant-additions',{recursive:true});
+          fs.writeFileSync('data/verified-variant-additions/catalog-additions.json',JSON.stringify(a));
+          fs.writeFileSync('data/verified-variant-additions/image-features.json',JSON.stringify({
+            model: allFeatures.model, dimension: allFeatures.dimension, quantization: allFeatures.quantization,
+            generatedAt: allFeatures.generatedAt, features: subset
+          }));
+          console.log(JSON.stringify({products:a.products.length,uniqueCodes:codes.size,uniqueImages:urls.length,features:Object.keys(subset).length}));
+          NODE
+      - name: Add durable merge to the daily refresh workflow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('.github/workflows/refresh-current-catalog.yml')
+          s=p.read_text()
+          anchor='''      - name: Build reusable product image features
+          run: node scripts/build-image-features.mjs
+'''
+          insert=anchor+'''      - name: Re-merge permanently stored verified product variants
+          run: |
+            mkdir -p candidate
+            cp data/verified-variant-additions/catalog-additions.json candidate/catalog-additions.json
+            cp data/verified-variant-additions/image-features.json candidate/image-features.json
+            node scripts/merge-verified-variant-additions.mjs
+'''
+          if 'Re-merge permanently stored verified product variants' not in s:
+              if anchor not in s: raise SystemExit('Refresh workflow insertion point not found; refusing to modify')
+              s=s.replace(anchor,insert)
+              p.write_text(s)
+          PY
+      - name: Validate merge against current production catalog without publishing it
+        run: |
+          cp catalog.json /tmp/catalog-before.json
+          cp image-features.json /tmp/features-before.json
+          mkdir -p candidate
+          cp data/verified-variant-additions/catalog-additions.json candidate/catalog-additions.json
+          cp data/verified-variant-additions/image-features.json candidate/image-features.json
+          node scripts/merge-verified-variant-additions.mjs
+          cp /tmp/catalog-before.json catalog.json
+          cp /tmp/features-before.json image-features.json
+          node --input-type=module -e "import fs from 'node:fs'; const r=JSON.parse(fs.readFileSync('variant-additions-merge-report.json','utf8')); if(r.duplicateCodesInFinalCatalog!==0 || !r.allNewProductsHaveFeatures) process.exit(1); console.log(JSON.stringify(r,null,2))"
+      - name: Create isolated pull request for review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: catalog/persist-verified-additions-${{ github.run_id }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git add data/verified-variant-additions/catalog-additions.json data/verified-variant-additions/image-features.json .github/workflows/refresh-current-catalog.yml
+          git diff --cached --check
+          git commit -m "Preserve verified Francfranc catalog additions"
+          git push origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "Preserve verified Francfranc variants across daily catalog refreshes" \
+            --body "Test-first, data-only maintenance change. Stores the previously revalidated 2,868 product additions and their 2,868 image feature vectors in the repository, then re-merges them after each full official-site refresh. The merge script enforces official visible-code agreement, valid URLs, positive prices, unique item codes, and feature coverage. The workflow validates a merge against the current catalog but restores catalog outputs before creating this PR, so production catalog data is not changed by this PR preparation run. The separate Arabesque mat code 1102090108020 is not part of this validated batch and will be handled separately."
