@@ -319,7 +319,7 @@ function renderRelatedVariants(product){
       (p.image?'<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;height:92px;object-fit:contain">':'')+
       '<div style="font-size:12px;line-height:1.4;font-weight:600;margin:5px 0">'+escapeHtml(p.title||'商品名未取得')+'</div>'+
       '<div style="font-size:12px">価格：'+escapeHtml(price)+'</div>'+
-      '<button type="button" class="relatedBarcodeButton" data-related-key="'+relatedKey+'" aria-label="この商品のバーコードを表示" title="この商品のバーコードを表示" style="width:100%;margin-top:7px;padding:7px 5px;font-size:22px;line-height:1" >▥</button></div>';
+      '<button type="button" class="relatedBarcodeButton" data-related-key="'+relatedKey+'" aria-label="この商品のバーコードを表示" title="この商品のバーコードを表示" style="width:100%;margin-top:7px;padding:5px;line-height:1;display:flex;justify-content:center;align-items:center"><svg aria-hidden="true" viewBox="0 0 64 24" width="64" height="24" style="display:block"><path fill="currentColor" d="M2 2h2v20H2z M6 2h1v20H6z M10 2h3v20h-3z M16 2h1v20h-1z M20 2h2v20h-2z M25 2h4v20h-4z M32 2h1v20h-1z M36 2h2v20h-2z M41 2h1v20h-1z M45 2h4v20h-4z M52 2h1v20h-1z M56 2h3v20h-3z M62 2h1v20h-1z"/></svg></button></div>';
   }).join('');
   return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・サイズ違い</strong><p style="font-size:12px;margin:5px 0 8px">候補を選ぶと、その商品の品番とバーコードを表示します。</p><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div></section>';
 }
