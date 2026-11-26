@@ -1,0 +1,18 @@
+name: Diagnostic workflow syntax isolation
+
+on:
+  push:
+    branches:
+      - diagnostic/workflow-syntax-isolation
+
+permissions:
+  contents: read
+
+jobs:
+  syntax-isolation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm workflow parsed and job started
+        run: |
+          echo "workflow parsed"
+          node --version
