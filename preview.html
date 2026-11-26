@@ -22,12 +22,13 @@ h2{font-size:18px}
 .camera-guide.open{display:flex}
 .camera-stage{position:relative;width:min(100%,520px);height:min(60vh,620px);display:flex;align-items:center;justify-content:center;overflow:hidden;background:#222;border-radius:12px}
 .camera-stage video{width:100%;height:100%;object-fit:contain}
+.camera-stage.barcode-mode video{object-fit:cover}
 .camera-frame{position:absolute;width:min(70%,38vh,340px);aspect-ratio:1;border:2px dashed #fff;border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.28);pointer-events:none}
 .camera-guide .camera-help{font-size:14px;line-height:1.6;text-align:center;max-width:520px;margin:0}
 .camera-mode-switch{display:flex;gap:8px;width:min(100%,520px)}
 .camera-mode-switch button{flex:1;margin:0;padding:11px 8px;background:#555;font-size:14px}
 .camera-mode-switch button.active{background:#fff;color:#222;font-weight:700}
-.camera-stage.barcode-mode .camera-frame{aspect-ratio:3.2/1;border-radius:8px;border-style:solid}
+.camera-stage.barcode-mode .camera-frame{aspect-ratio:2.5/1;border-radius:8px;border-style:solid}
 .camera-stage.product-mode .camera-frame{aspect-ratio:1;border-radius:12px}
 .camera-actions{display:flex;width:min(100%,520px);gap:10px}
 .camera-actions button{flex:1;margin-top:0}
@@ -505,7 +506,9 @@ function syncCameraFrame(){
   const scale=Math.min(sw/vw,sh/vh);
   const renderedW=vw*scale,renderedH=vh*scale;
   if(cameraMode==='barcode'){
-    frame.style.width=Math.max(180,Math.min(renderedW*0.9,stage.clientWidth*0.9))+'px';
+    // In barcode mode the video uses object-fit:cover, so the visible image
+    // fills the stage. Keep the guide strictly inside that visible area.
+    frame.style.width=Math.max(1,stage.clientWidth*0.9)+'px';
   }else{
     const side=Math.max(120,Math.min(renderedW*0.88,renderedH*0.72));
     frame.style.width=side+'px';
@@ -520,7 +523,9 @@ document.getElementById('takePhoto').addEventListener('click',async()=>{
   const frame=document.querySelector('.camera-frame');
   const stageRect=stage.getBoundingClientRect();
   const frameRect=frame.getBoundingClientRect();
-  const scale=Math.min(stageRect.width/vw,stageRect.height/vh);
+  const scale=cameraMode==='barcode'
+    ?Math.max(stageRect.width/vw,stageRect.height/vh)
+    :Math.min(stageRect.width/vw,stageRect.height/vh);
   const renderedW=vw*scale,renderedH=vh*scale;
   const offsetX=(stageRect.width-renderedW)/2;
   const offsetY=(stageRect.height-renderedH)/2;
