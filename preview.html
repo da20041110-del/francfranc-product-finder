@@ -692,8 +692,8 @@ async function searchByBarcodePhoto(){
     }finally{
       reader.reset();
     }
-    const code=String(result.getText()||'').replace(/\\D/g,'');
-    if(!/^\\d{13}$/.test(code)){
+    const code=String(result.getText()||'').replace(/\D/g,'');
+    if(!/^\d{13}$/.test(code)){
       throw new Error('EAN-13形式の13桁を読み取れませんでした。');
     }
     const matches=catalogProducts.filter(p=>getProductCode(p)===code);
