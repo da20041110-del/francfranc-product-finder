@@ -265,6 +265,8 @@ function renderProgressCandidates(scored){
   }
 }
 let catalogProducts=[];
+let verifiedVariantProducts=[];
+const verifiedVariantProductsReady=fetch('./test/ecofur-catalog.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('verified variant fixture HTTP '+r.status);return r.json();}).then(data=>{verifiedVariantProducts=Array.isArray(data.products)?data.products:[];return verifiedVariantProducts.length;}).catch(error=>{console.warn('公式確認済み色違いテストデータを読み込めませんでした:',error);return 0;});
 let productImageFeatures=new Map();
 let imageFeaturesLoadError='';
 const imageFeaturesLoadStartedAt=performance.now();
@@ -284,30 +286,48 @@ function getSeriesKey(title=''){
   return s;
 }
 function renderRelatedVariants(product){
+  const productCode=String(getProductCode(product)||'').replace(/\\D/g,'');
+  // Highest priority: test-only variants independently verified against the
+  // official page's visible 品番 and matching official image filename.
+  const officialVariants=verifiedVariantProducts.filter(p=>
+    p.url===product.url &&
+    String(getProductCode(p)||'').replace(/\\D/g,'')!==productCode &&
+    p.itemCodeSource==='visible_label' &&
+    p.verifiedCode===true &&
+    p.codeStatus==='normal' &&
+    p.imageStatus==='matched_visible_code' &&
+    p.image
+  );
+  const officialCards=officialVariants.map(p=>{
+    const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
+    return '<div style="min-width:116px;max-width:140px;flex:1;border:2px solid #b97869;border-radius:9px;padding:8px;background:#fff">'+
+      '<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;height:96px;object-fit:contain">'+
+      '<div style="font-size:10px;color:#9a5f51;font-weight:700;margin:4px 0">公式確認済み・色違い</div>'+
+      '<div style="font-size:12px;line-height:1.4;font-weight:600;margin:5px 0">'+escapeHtml(p.title||'商品名未取得')+'</div>'+
+      '<div style="font-size:12px">価格：'+escapeHtml(price)+'</div>'+
+      '<div style="font-size:11px">品番：'+escapeHtml(getProductCode(p))+'</div>'+
+      '<a style="font-size:12px;display:inline-block;margin-top:5px" href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式ページ</a></div>';
+  }).join('');
   const key=getSeriesKey(product.title||'');
-  const productCode=String(getProductCode(product)||'').replace(/\D/g,'');
-  if(key.length<4 && productCode.length<8)return '';
-  // First use normalized shared product-family title. If that misses, use the
-  // shared JAN/POS prefix as a conservative fallback for color variants.
-  let related=catalogProducts.filter(p=>p.url!==product.url&&p.image&&getSeriesKey(p.title||'')===key);
-  if(!related.length && productCode.length>=11){
-    const prefix=productCode.slice(0,11);
-    related=catalogProducts.filter(p=>{
-      const code=String(getProductCode(p)||'').replace(/\D/g,'');
-      return p.url!==product.url&&p.image&&code.length===13&&code.slice(0,11)===prefix;
-    });
-  }
-  related=related.slice(0,5);
-  if(!related.length)return '';
-  const cards=related.map(p=>{
+  let inferred=catalogProducts.filter(p=>
+    p.url!==product.url && p.image &&
+    getSeriesKey(p.title||'')===key &&
+    !officialVariants.some(v=>getProductCode(v)===getProductCode(p))
+  ).slice(0,5);
+  const inferredCards=inferred.map(p=>{
     const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
     return '<div style="min-width:112px;max-width:132px;flex:1;border:1px solid #e5e1dd;border-radius:8px;padding:8px;background:#fff">'+
-      (p.image?'<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;height:92px;object-fit:contain">':'')+
+      '<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;height:92px;object-fit:contain">'+
+      '<div style="font-size:10px;color:#777;margin:4px 0">商品名からの推定候補</div>'+
       '<div style="font-size:12px;line-height:1.4;font-weight:600;margin:5px 0">'+escapeHtml(p.title||'商品名未取得')+'</div>'+
       '<div style="font-size:12px">価格：'+escapeHtml(price)+'</div>'+
       '<a style="font-size:12px;display:inline-block;margin-top:5px" href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式ページ</a></div>';
   }).join('');
-  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・サイズ違い</strong><p style="font-size:12px;margin:5px 0 8px">商品名が近い掲載商品です。色やサイズは公式ページで確認してください。</p><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div></section>';
+  if(!officialCards&&!inferredCards)return '';
+  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px">'+
+    (officialCards?'<strong>公式ページで確認できた色違い</strong><p style="font-size:12px;margin:5px 0 8px">品番と画像の対応を確認済みの色違いです。すべて表示します。</p><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px">'+officialCards+'</div>':'')+
+    (inferredCards?'<div style="margin-top:12px"><strong>同シリーズ候補（商品名からの推定）</strong><p style="font-size:12px;margin:5px 0 8px">公式の色違いとは区別して、参考候補として表示しています。</p><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+inferredCards+'</div></div>':'')+
+    '</section>';
 }
 function normalizeJapaneseSearch(value=''){
   let text=String(value).normalize('NFKC').toLocaleLowerCase('ja').replace(/[\\s　・･‐‑‒–—―ー_/.,、。()（）［］【】「」『』]/g,'');
@@ -803,6 +823,7 @@ async function searchByBarcodePhoto(){
   }
 }
 search.addEventListener('click',async()=>{
+  await verifiedVariantProductsReady;
   photoStatus.hidden=false;
   photoStatus.className='status';
   photoStatus.textContent='検索ボタンを押しました。カタログと検索機能を確認中…';
