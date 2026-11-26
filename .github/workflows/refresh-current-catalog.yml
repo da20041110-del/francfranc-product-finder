@@ -37,6 +37,11 @@ jobs:
         run: npm install --no-save --no-package-lock @xenova/transformers@2.17.2
       - name: Build reusable product image features
         run: node scripts/build-image-features.mjs
+      - name: Restore durable verified additions after the fresh crawl
+        if: hashFiles('data/verified-variant-additions/catalog-additions.json') != ''
+        env:
+          CANDIDATE_DIR: data/verified-variant-additions
+        run: node scripts/merge-verified-variant-additions.mjs
       - name: Summarize catalog
         run: |
           node --input-type=module -e "import fs from 'node:fs'; const c=JSON.parse(fs.readFileSync('catalog.json','utf8')); console.log(JSON.stringify({generatedAt:c.generatedAt,attempted:c.attempted,found:c.found,withItemCode:c.products.filter(p=>p.itemCode).length,withImage:c.products.filter(p=>p.image).length,imageMatchedToVisibleCodeCount:c.imageMatchedToVisibleCodeCount,variantImageMismatchBlockedCount:c.variantImageMismatchBlockedCount},null,2))"
