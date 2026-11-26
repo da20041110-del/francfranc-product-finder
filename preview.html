@@ -186,6 +186,7 @@ clearAppButton.addEventListener('click',()=>{
   stopImageSearch=true;
   if(photo.dataset.url){URL.revokeObjectURL(photo.dataset.url);delete photo.dataset.url;}
   selectedPhotoFile=null;
+  selectedPhotoMode='product';
   file.value='';
   libraryFile.value='';
   photo.removeAttribute('src');
@@ -442,6 +443,7 @@ const photo=document.getElementById('photo');
 const search=document.getElementById('search');
 const photoStatus=document.getElementById('photoStatus');
 let selectedPhotoFile=null;
+let selectedPhotoMode='product';
 let cameraStream=null;
 const cameraGuide=document.getElementById('cameraGuide');
 const cameraVideo=document.getElementById('cameraVideo');
@@ -546,13 +548,14 @@ document.getElementById('takePhoto').addEventListener('click',async()=>{
   const isBarcodeMode=cameraMode==='barcode';
   const capturedFile=new File([blob],isBarcodeMode?'barcode-photo.jpg':'product-photo.jpg',{type:'image/jpeg',lastModified:Date.now()});
   await stopCamera();
-  handlePhotoFile(capturedFile,isBarcodeMode?'バーコード部分を切り抜きました。線と数字がはっきり写っているか確認して検索してください。':'画面の枠に合わせて切り抜きました。商品全体が写っているか確認してから検索してください。');
+  handlePhotoFile(capturedFile,isBarcodeMode?'バーコード部分を切り抜きました。線と数字がはっきり写っているか確認して検索してください。':'画面の枠に合わせて切り抜きました。商品全体が写っているか確認してから検索してください。',isBarcodeMode?'barcode':'product');
 });
 if(libraryPick)libraryPick.addEventListener('click',()=>libraryFile.click());
-function handlePhotoFile(f,message){
+function handlePhotoFile(f,message,mode='product'){
   if(!f)return;
   photoStatus.hidden=false;
   selectedPhotoFile=f;
+  selectedPhotoMode=mode;
   photo.style.display='none';
   search.disabled=true;
   photoStatus.className='status';
@@ -580,6 +583,7 @@ function handlePhotoFile(f,message){
 }
 function handlePhotoChange(input){
   const f=input.files&&input.files[0];
+  selectedPhotoMode='product';
   if(!f){
     photoStatus.className='status';
     photoStatus.textContent='写真が選択されませんでした。もう一度お試しください。';
@@ -674,6 +678,58 @@ async function fetchImageBlobUrl(url){
   if(!response.ok)throw new Error('商品画像を取得できませんでした');
   return URL.createObjectURL(await response.blob());
 }
+async function searchByBarcodePhoto(){
+  photoStatus.textContent='バーコードを読み取っています…';
+  catalogResults.style.display='block';
+  catalogResults.innerHTML='';
+  catalogStatus.textContent='読み取った13桁の品番を公式カタログと照合します。';
+  try{
+    const { BrowserMultiFormatReader } = await import('https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/+esm');
+    const reader=new BrowserMultiFormatReader();
+    let result;
+    try{
+      result=await reader.decodeFromImageElement(photo);
+    }finally{
+      reader.reset();
+    }
+    const code=String(result.getText()||'').replace(/\\D/g,'');
+    if(!/^\\d{13}$/.test(code)){
+      throw new Error('EAN-13形式の13桁を読み取れませんでした。');
+    }
+    const matches=catalogProducts.filter(p=>getProductCode(p)===code);
+    catalogResults.innerHTML='';
+    if(!matches.length){
+      catalogStatus.textContent='バーコードは読み取れましたが、現在の公式カタログに同じ品番がありません。';
+      photoStatus.className='status error';
+      photoStatus.textContent='読み取り品番：'+code+'。カタログ内に完全一致する商品が見つかりませんでした。';
+      return;
+    }
+    catalogStatus.textContent='バーコードの13桁と公式カタログの品番が完全一致しました。';
+    for(const p of matches){
+      const card=document.createElement('article');
+      card.className='card';card.style.marginTop='12px';
+      const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
+      card.innerHTML='<span class="result-rank first">品番完全一致</span><h3 style="font-size:16px;line-height:1.5">'+escapeHtml(p.title||'商品名未取得')+'</h3><p>価格：'+escapeHtml(price)+'</p><p>品番：'+escapeHtml(code)+'</p><p><a href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式商品ページを開く</a></p><button type="button" class="chooseProduct">バーコードを表示</button>';
+      if(p.image){
+        const img=document.createElement('img');
+        img.src=p.image;img.alt=p.title||'商品画像';img.loading='eager';
+        img.style.cssText='display:block;width:100%;max-height:210px;object-fit:contain;border-radius:8px;background:#f7f6f4';
+        img.addEventListener('error',()=>{img.style.display='none';});
+        card.prepend(img);
+      }
+      card.querySelector('.chooseProduct').addEventListener('click',()=>selectProduct(p,card));
+      catalogResults.appendChild(card);
+    }
+    photoStatus.className='status';
+    photoStatus.textContent='バーコード読み取り成功。品番 '+code+' と完全一致する商品を表示しました。';
+    catalogResults.scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(error){
+    console.warn('バーコード読み取りに失敗しました:',error);
+    catalogStatus.textContent='バーコードを読み取れませんでした。枠内にバーコード全体を入れ、ピントを合わせて撮り直してください。';
+    photoStatus.className='status error';
+    photoStatus.textContent='バーコードを認識できませんでした。数字が鮮明に写るよう撮り直してください。';
+  }
+}
 search.addEventListener('click',async()=>{
   photoStatus.hidden=false;
   photoStatus.className='status';
@@ -683,6 +739,11 @@ search.addEventListener('click',async()=>{
   if(!photoFile){photoStatus.textContent='先に商品写真を選んでください。';return;}
   if(!catalogProducts.length){photoStatus.className='status error';photoStatus.textContent='商品カタログが読み込まれていません。少し待ってから再読み込みしてください。';return;}
   imageSearchBusy=true;stopImageSearch=false;search.disabled=true;
+  if(selectedPhotoMode==='barcode'){
+    try{await searchByBarcodePhoto();}
+    finally{imageSearchBusy=false;search.disabled=false;}
+    return;
+  }
   // Start model loading and query-photo analysis while the precomputed catalog vectors finish loading.
   photoStatus.textContent='検索候補を準備中です…';
   photoStatus.textContent='検索候補を準備中です…（カタログ '+catalogProducts.length+'件）';
