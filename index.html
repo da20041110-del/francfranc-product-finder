@@ -281,6 +281,8 @@ function getSeriesKey(title=''){
   s=s.replace(/(ミニ|スモール|レギュラー|ラージ|small|medium|large)/g,'');
   return s;
 }
+const relatedProductLookup=new Map();
+let relatedProductCounter=0;
 function renderRelatedVariants(product){
   const key=getSeriesKey(product.title||'');
   const productCode=String(getProductCode(product)||'').replace(/\D/g,'');
@@ -311,19 +313,34 @@ function renderRelatedVariants(product){
   if(!related.length)return '';
   const cards=related.map(p=>{
     const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
+    const relatedKey='related-'+(++relatedProductCounter);
+    relatedProductLookup.set(relatedKey,p);
     return '<div style="min-width:112px;max-width:132px;flex:1;border:1px solid #e5e1dd;border-radius:8px;padding:8px;background:#fff">'+
       (p.image?'<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;height:92px;object-fit:contain">':'')+
       '<div style="font-size:12px;line-height:1.4;font-weight:600;margin:5px 0">'+escapeHtml(p.title||'商品名未取得')+'</div>'+
       '<div style="font-size:12px">価格：'+escapeHtml(price)+'</div>'+
-      '<a style="font-size:12px;display:inline-block;margin-top:5px" href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式ページ</a></div>';
+      '<button type="button" class="relatedBarcodeButton" data-related-key="'+relatedKey+'" style="width:100%;margin-top:7px;padding:8px 5px;font-size:12px">バーコードを表示する</button></div>';
   }).join('');
-  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・サイズ違い</strong><p style="font-size:12px;margin:5px 0 8px">商品名が近い掲載商品です。色やサイズは公式ページで確認してください。</p><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div></section>';
+  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・サイズ違い</strong><p style="font-size:12px;margin:5px 0 8px">候補を選ぶと、その商品の品番とバーコードを表示します。</p><div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div></section>';
 }
+catalogResults.addEventListener('click',event=>{
+  const button=event.target.closest('.relatedBarcodeButton');
+  if(!button)return;
+  const product=relatedProductLookup.get(button.dataset.relatedKey);
+  if(product)selectProduct(product,button.closest('.card'));
+});
 function normalizeJapaneseSearch(value=''){
   let text=String(value).normalize('NFKC').toLocaleLowerCase('ja').replace(/[\\s　・･‐‑‒–—―ー_/.,、。()（）［］【】「」『』]/g,'');
   // Normalize katakana to hiragana so either script can find the same product name.
   return text.replace(/[ァ-ヶ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0x60));
 }
+textSearchPanel.addEventListener('toggle',()=>{
+  if(!textSearchPanel.open)return;
+  requestAnimationFrame(()=>{
+    catalogQuery.focus({preventScroll:true});
+    catalogQuery.scrollIntoView({behavior:'smooth',block:'center'});
+  });
+});
 let catalogVisibleCount=30;
 let lastCatalogQuery='';
 function renderCatalog(){
