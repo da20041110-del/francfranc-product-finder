@@ -1,4 +1,4 @@
-name: Integrate verified Francfranc variant additions
+name: Preserve verified Francfranc variant additions
 
 on:
   push:
@@ -12,11 +12,11 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: francfranc-variant-integration
+  group: francfranc-variant-preservation
   cancel-in-progress: false
 
 jobs:
-  prepare-data-pr:
+  preserve-data:
     runs-on: ubuntu-latest
     steps:
       - name: Check out latest production main
@@ -25,7 +25,7 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Download previously validated candidate artifact
+      - name: Download validated candidate artifact
         uses: actions/download-artifact@v4
         with:
           name: francfranc-original-variant-revalidation-test
@@ -39,21 +39,25 @@ jobs:
         with:
           node-version: 22
 
-      - name: Merge candidates and validate data consistency
+      - name: Validate every candidate and its image features
         run: node scripts/merge-verified-variant-additions.mjs
 
-      - name: Create isolated data-only pull request
+      - name: Store validated source data in the repository
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: catalog/verified-variant-additions-${{ github.run_id }}
+          BRANCH: catalog/durable-verified-additions-data-${{ github.run_id }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p data/verified-variant-additions
+          cp candidate/catalog-additions.json data/verified-variant-additions/catalog-additions.json
+          cp candidate/image-features.json data/verified-variant-additions/image-features.json
+          cp candidate/variant-catalog-additions-report.json data/verified-variant-additions/validation-report.json
+          git checkout -- catalog.json image-features.json
+          rm -f variant-additions-merge-report.json
           git switch -c "$BRANCH"
-          git add catalog.json image-features.json
+          git add data/verified-variant-additions
           git diff --cached --check
-          git commit -m "Add verified Francfranc product variants"
+          git commit -m "Preserve verified Francfranc variant source data"
           git push origin "$BRANCH"
           gh pr create --base main --head "$BRANCH" \
-            --title "Add 2,868 verified Francfranc product variants" \
-            --body "Automated data-only integration from validation run 45281717803. Includes catalog.json, image-features.json, and a merge validation report. Strict checks enforce official 13-digit code agreement, HTTPS Francfranc image URLs, positive prices, unique codes, and image-feature coverage."
+            --title "Preserve 2,868 verified Francfranc product additions" \
+            --body "Durable source-data archive from validation run 45281717803. This PR stores the 2,868 validated product records, reusable image features, and validation report under data/verified-variant-additions. It does not change the live catalog. The daily catalog refresh will merge this archive only after the storage and refresh changes are merged."
