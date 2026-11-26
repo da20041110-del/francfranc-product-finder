@@ -678,24 +678,96 @@ async function fetchImageBlobUrl(url){
   if(!response.ok)throw new Error('商品画像を取得できませんでした');
   return URL.createObjectURL(await response.blob());
 }
+function loadBarcodeImage(src){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>resolve(img);
+    img.onerror=()=>reject(new Error('解析用画像を準備できませんでした'));
+    img.src=src;
+  });
+}
+async function createBarcodeReadVariants(source){
+  const width=source.naturalWidth||source.width;
+  const height=source.naturalHeight||source.height;
+  if(!width||!height)throw new Error('撮影画像のサイズを取得できませんでした');
+  const scale=Math.min(2.5,Math.max(1,1800/width));
+  const w=Math.round(width*scale),h=Math.round(height*scale);
+  const base=document.createElement('canvas');
+  base.width=w;base.height=h;
+  const baseCtx=base.getContext('2d',{willReadFrequently:true});
+  baseCtx.imageSmoothingEnabled=true;
+  baseCtx.imageSmoothingQuality='high';
+  baseCtx.drawImage(source,0,0,w,h);
+  const variants=[base.toDataURL('image/png')];
+  const gray=document.createElement('canvas');
+  gray.width=w;gray.height=h;
+  const grayCtx=gray.getContext('2d',{willReadFrequently:true});
+  grayCtx.drawImage(base,0,0);
+  const imageData=grayCtx.getImageData(0,0,w,h);
+  const pixels=imageData.data;
+  for(let i=0;i<pixels.length;i+=4){
+    const luminance=0.299*pixels[i]+0.587*pixels[i+1]+0.114*pixels[i+2];
+    const contrast=Math.max(0,Math.min(255,(luminance-128)*1.45+128));
+    pixels[i]=pixels[i+1]=pixels[i+2]=contrast;
+  }
+  grayCtx.putImageData(imageData,0,0);
+  variants.push(gray.toDataURL('image/png'));
+  const threshold=document.createElement('canvas');
+  threshold.width=w;threshold.height=h;
+  const thresholdCtx=threshold.getContext('2d',{willReadFrequently:true});
+  thresholdCtx.drawImage(gray,0,0);
+  const thresholdData=thresholdCtx.getImageData(0,0,w,h);
+  for(let i=0;i<thresholdData.data.length;i+=4){
+    const value=thresholdData.data[i]>165?255:0;
+    thresholdData.data[i]=thresholdData.data[i+1]=thresholdData.data[i+2]=value;
+  }
+  thresholdCtx.putImageData(thresholdData,0,0);
+  variants.push(threshold.toDataURL('image/png'));
+  const inverted=document.createElement('canvas');
+  inverted.width=w;inverted.height=h;
+  const invertedCtx=inverted.getContext('2d',{willReadFrequently:true});
+  invertedCtx.drawImage(gray,0,0);
+  const invertedData=invertedCtx.getImageData(0,0,w,h);
+  for(let i=0;i<invertedData.data.length;i+=4){
+    const value=255-invertedData.data[i];
+    invertedData.data[i]=invertedData.data[i+1]=invertedData.data[i+2]=value;
+  }
+  invertedCtx.putImageData(invertedData,0,0);
+  variants.push(inverted.toDataURL('image/png'));
+  return variants;
+}
 async function searchByBarcodePhoto(){
-  photoStatus.textContent='バーコードを読み取っています…';
+  photoStatus.textContent='バーコードを読み取っています…画像を補正しながら複数回確認します。';
   catalogResults.style.display='block';
   catalogResults.innerHTML='';
-  catalogStatus.textContent='読み取った13桁の品番を公式カタログと照合します。';
+  catalogStatus.textContent='元画像・拡大画像・明暗補正版を順番に解析しています。';
   try{
     const { BrowserMultiFormatReader } = await import('https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/+esm');
     const reader=new BrowserMultiFormatReader();
-    let result;
+    let result=null;
+    let attempts=0;
     try{
-      result=await reader.decodeFromImageElement(photo);
+      const variants=await createBarcodeReadVariants(photo);
+      for(const variant of variants){
+        attempts++;
+        try{
+          const candidateImage=await loadBarcodeImage(variant);
+          const candidate=await reader.decodeFromImageElement(candidateImage);
+          const candidateCode=String(candidate.getText()||'').replace(/\D/g,'');
+          if(/^\d{13}$/.test(candidateCode)){
+            result=candidate;
+            break;
+          }
+        }catch(decodeError){
+          console.debug('バーコード解析パターン'+attempts+'では読み取れませんでした。',decodeError);
+        }
+      }
     }finally{
       reader.reset();
     }
+    if(!result)throw new Error('複数の画像補正を試しましたが読み取れませんでした');
     const code=String(result.getText()||'').replace(/\D/g,'');
-    if(!/^\d{13}$/.test(code)){
-      throw new Error('EAN-13形式の13桁を読み取れませんでした。');
-    }
+    if(!/^\d{13}$/.test(code))throw new Error('EAN-13形式の13桁を読み取れませんでした。');
     const matches=catalogProducts.filter(p=>getProductCode(p)===code);
     catalogResults.innerHTML='';
     if(!matches.length){
@@ -727,7 +799,7 @@ async function searchByBarcodePhoto(){
     console.warn('バーコード読み取りに失敗しました:',error);
     catalogStatus.textContent='バーコードを読み取れませんでした。枠内にバーコード全体を入れ、ピントを合わせて撮り直してください。';
     photoStatus.className='status error';
-    photoStatus.textContent='バーコードを認識できませんでした。数字が鮮明に写るよう撮り直してください。';
+    photoStatus.textContent='複数の画像補正を試しましたが認識できませんでした。バーコード全体を枠に入れ、少し距離を取って撮り直してください。';
   }
 }
 search.addEventListener('click',async()=>{
