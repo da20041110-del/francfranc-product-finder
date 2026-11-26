@@ -299,57 +299,30 @@ function titleSimilarityScore(a,b){
   return Math.max(dice,coverage,containment);
 }
 function renderRelatedVariants(product){
-  const key=getSeriesKey(product.title||'');
-  const validCatalog=catalogProducts.map(p=>{
-    const candidateKey=getSeriesKey(p.title||'');
-    return {...p,_seriesKey:candidateKey};
-  }).filter(p=>p._seriesKey.length>=2);
-  let specificMatchCount=0;
-  let broadMatchCount=0;
-  let fuzzyMatchCount=0;
-  const related=validCatalog.map(p=>{
-    if(getProductCode(p)===getProductCode(product))return null;
-    const candidateKey=p._seriesKey;
-    const shorter=key.length<=candidateKey.length?key:candidateKey;
-    const longer=key.length>candidateKey.length?key:candidateKey;
-    let commonPrefix=0;
-    while(commonPrefix<shorter.length&&shorter[commonPrefix]===longer[commonPrefix])commonPrefix++;
-    const targetCoverage=key.length?commonPrefix/key.length:0;
-    const shorterCoverage=shorter.length?commonPrefix/shorter.length:0;
-    const fullScore=titleSimilarityScore(key,candidateKey);
-    // A specific match carries at least 70% of the selected product name
-    // from its beginning. Shorter shared series names are a lower tier.
-    const specificMatch=targetCoverage>=0.70;
-    const broadMatch=!specificMatch&&shorterCoverage>=0.70&&commonPrefix>=3;
-    const fuzzyMatch=fullScore>=0.70;
-    if(specificMatch)specificMatchCount++;
-    else if(broadMatch)broadMatchCount++;
-    if(fuzzyMatch)fuzzyMatchCount++;
-    if(!specificMatch&&!broadMatch&&!fuzzyMatch)return null;
-    const tier=specificMatch?0:(broadMatch?1:2);
-    return {...p,relatedScore:Math.max(targetCoverage,fullScore),targetCoverage,commonPrefix,fullScore,exactFamily:candidateKey===key,specificMatch,broadMatch,tier};
-  }).filter(Boolean).sort((a,b)=>{
-    if(a.tier!==b.tier)return a.tier-b.tier;
-    if(a.tier===0&&a.exactFamily!==b.exactFamily)return a.exactFamily?-1:1;
-    if(a.commonPrefix!==b.commonPrefix)return b.commonPrefix-a.commonPrefix;
-    return b.relatedScore-a.relatedScore;
-  }).slice(0,5);
+  const code=String(getProductCode(product)||'').replace(/\\D/g,'');
+  const related=catalogProducts.filter(p=>
+    p.url===product.url &&
+    String(getProductCode(p)||'').replace(/\\D/g,'')!==code &&
+    p.itemCodeSource==='visible_label' &&
+    p.verifiedCode===true &&
+    p.codeStatus==='normal' &&
+    p.imageStatus==='matched_visible_code' &&
+    Boolean(p.image)
+  );
   const cards=related.map(p=>{
     const price=p.price?Number(p.price).toLocaleString('ja-JP')+'円':'価格未取得';
-    const percent=Math.round(p.relatedScore*100);
-    const type=p.tier===0?(p.exactFamily?'同シリーズ・色違い':'商品名の高一致'):p.tier===1?'シリーズ名一致':'その他の類似商品';
-    return '<div style="min-width:112px;max-width:132px;flex:1;border:1px solid #e5e1dd;border-radius:8px;padding:8px;background:#fff">'+
-      (p.image?'<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;height:92px;object-fit:contain">':'')+
-      '<div style="font-size:10px;color:#8b6b5d;margin:4px 0">'+type+' · '+percent+'%</div>'+
+    return '<div style="min-width:120px;max-width:145px;flex:1;border:2px solid #b97869;border-radius:9px;padding:8px;background:#fff">'+
+      '<img src="'+escapeHtml(p.image)+'" alt="" loading="lazy" style="width:100%;height:100px;object-fit:contain">'+
+      '<div style="font-size:10px;color:#9a5f51;font-weight:700;margin:4px 0">公式確認済み・色違い</div>'+
       '<div style="font-size:12px;line-height:1.4;font-weight:600;margin:5px 0">'+escapeHtml(p.title||'商品名未取得')+'</div>'+
       '<div style="font-size:12px">価格：'+escapeHtml(price)+'</div>'+
+      '<div style="font-size:11px">品番：'+escapeHtml(getProductCode(p))+'</div>'+
       '<a style="font-size:12px;display:inline-block;margin-top:5px" href="'+escapeHtml(p.url||'#')+'" target="_blank" rel="noopener noreferrer">公式ページ</a></div>';
   }).join('');
-  const diagnostic='比較対象 '+catalogProducts.length+'件 / 有効な商品名 '+validCatalog.length+'件 / 商品名高一致 '+specificMatchCount+'件 / シリーズ一致 '+broadMatchCount+'件 / 全体類似 '+fuzzyMatchCount+'件 / 表示 '+related.length+'件';
-  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>同シリーズ・色違い・類似商品</strong>'+
-    '<p style="font-size:12px;margin:5px 0 8px">商品名の先頭からの一致範囲が長い候補を優先し、シリーズ名だけの一致はその下に表示します。色やサイズは公式ページで確認してください。</p>'+
-    (cards?'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div>':'<p style="font-size:13px;margin:8px 0">一致候補はありませんでした。</p>')+
-    '<p style="font-size:10px;color:#777;margin:8px 0 0">診断：'+diagnostic+'</p></section>';
+  return '<section style="margin-top:14px;padding:12px;background:#f7f4f1;border-radius:10px"><strong>公式ページで確認できた色違い</strong>'+
+    '<p style="font-size:12px;margin:5px 0 8px">公式表示品番・画像の対応を確認した色違いを、件数制限なしで表示します。</p>'+
+    (cards?'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">'+cards+'</div>':'<p style="font-size:13px;margin:8px 0">確認済みの色違いはありません。</p>')+
+    '<p style="font-size:10px;color:#777;margin:8px 0 0">確認済み色違い '+related.length+'件 / 公式表示品番・画像対応・EAN-13チェック済み</p></section>';
 }
 function normalizeJapaneseSearch(value=''){
   let text=String(value).normalize('NFKC').toLocaleLowerCase('ja').replace(/\s/g,'').replace(/[　・･‐‑‒–—―ー_/.,、。()（）［］【】「」『』]/g,'');
