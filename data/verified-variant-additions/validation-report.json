@@ -1,0 +1,167 @@
+{
+  "generatedAt": "2026-11-23T23:07:15.598Z",
+  "sourceCandidateArtifactRunId": 44876212152,
+  "inputNewCodeCandidates": 3348,
+  "familyMatchedCandidates": 2892,
+  "heldForFamilyTitleReview": 456,
+  "revalidated": 2892,
+  "acceptedForTestCatalog": 2868,
+  "rejected": 24,
+  "withPositivePrice": 2868,
+  "withCodeMatchedOfficialImage": 2868,
+  "uniqueAcceptedCodes": 2868,
+  "baselineProducts": 3835,
+  "testCatalogProducts": 6703,
+  "rejectionReasons": {
+    "already present in baseline catalog": 22,
+    "image is not hosted on the official Francfranc domain": 1,
+    "no official image filename matched to the visible 品番": 1
+  },
+  "safety": "Test-only. Each original family-matched candidate URL is re-fetched. The visible official 品番 must uniquely equal the candidate, EAN-13 must be valid, the live official title must match its source family, a positive official price must exist, and an official image filename must match the visible code. Production catalog is untouched.",
+  "rejections": [
+    {
+      "itemCode": "1101110007404",
+      "title": "リモア ティースプーン ブラック",
+      "url": "https://francfranc.com/products/1101110007404",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1105030009029",
+      "title": "ハート バスフィズ ライトピンク（ピオニー）",
+      "url": "https://francfranc.com/products/1105030009029",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1106010027149",
+      "title": "バッグチャームエコバッグ シェル ミント",
+      "url": "https://francfranc.com/products/1106010027149",
+      "reason": "image is not hosted on the official Francfranc domain"
+    },
+    {
+      "itemCode": "1101110101843",
+      "title": "食洗機対応 箸 グリッター グレー",
+      "url": "https://francfranc.com/products/1101110101843",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1102070080988",
+      "title": "フリルバランス ダブルカーテン H1780×W1000 ライトブルー",
+      "url": "https://francfranc.com/products/1102070080988",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1102070081275",
+      "title": "ルシーラ ドレープカーテン H1350×W1000 ライトパープル",
+      "url": "https://francfranc.com/products/1102070081275",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1102030071070",
+      "title": "WARMY ホワモコ リボン 掛け布団カバー ダブル アイボリー",
+      "url": "https://francfranc.com/products/1102030071070",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1101090076391",
+      "title": "色々皿 プレート S スプラッター",
+      "url": "https://francfranc.com/products/1101090076391",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1104020008189",
+      "title": "キルティング ミニランチマット ハート イエロー",
+      "url": "https://francfranc.com/products/1104020008189",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1102090105371",
+      "title": "チェッカーボード キッチンマット S オレンジ×ブルー",
+      "url": "https://francfranc.com/products/1102090105371",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1106040047711",
+      "title": "吸放湿加工 ストレッチスウェット ルームウェア ブルー",
+      "url": "https://francfranc.com/products/1106040047711",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1111060051891",
+      "title": "セラミック ツリー 小物入れ ホワイト",
+      "url": "https://francfranc.com/products/1111060051891",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1101080067088",
+      "title": "マット ステンレスボトル 350ml ピンク",
+      "url": "https://francfranc.com/products/1101080067088",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1102030072053",
+      "title": "フリル ガーゼ スモールフラワー 掛け布団カバー セミダブル グレー",
+      "url": "https://francfranc.com/products/1102030072053",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1105030044785",
+      "title": "リトルブルーム チャーム付きハンドクリーム ホワイト",
+      "url": "https://francfranc.com/products/1105030044785",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1201020155803",
+      "title": "ラビット ライススプーン ブラック",
+      "url": "https://francfranc.com/products/1201020155803",
+      "reason": "no official image filename matched to the visible 品番"
+    },
+    {
+      "itemCode": "1101090082712",
+      "title": "ツイード プレート S ライトブルー",
+      "url": "https://francfranc.com/products/1101090082712",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1101090082880",
+      "title": "ツイード スープカップ ブルー",
+      "url": "https://francfranc.com/products/1101090082880",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1101090082798",
+      "title": "ツイード プレート L ライトブルー",
+      "url": "https://francfranc.com/products/1101090082798",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1101120110361",
+      "title": "ダイヤ ガラス タンブラー オパール",
+      "url": "https://francfranc.com/products/1101120110361",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1102010171851",
+      "title": "エコファー クッションカバー 450×450 ベージュ（D-045）",
+      "url": "https://francfranc.com/products/1102010171851",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1102030072350",
+      "title": "ロベリー 掛け布団カバー セミダブル ホワイト×ライトグレー",
+      "url": "https://francfranc.com/products/1102030072350",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1101120110521",
+      "title": "サンティエ シャンパングラス シルバー",
+      "url": "https://francfranc.com/products/1101120110521",
+      "reason": "already present in baseline catalog"
+    },
+    {
+      "itemCode": "1111070077263",
+      "title": "レジンオーナメント ツリー グリーン",
+      "url": "https://francfranc.com/products/1111070077263",
+      "reason": "already present in baseline catalog"
+    }
+  ]
+}
