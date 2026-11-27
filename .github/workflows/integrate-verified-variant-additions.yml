@@ -73,6 +73,8 @@ jobs:
           git switch -c "$BRANCH"
           git add data/verified-variant-additions
           git diff --cached --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Preserve verified Francfranc variant source data"
           git push origin "$BRANCH"
           gh pr create --base main --head "$BRANCH" \
