@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/integrate-verified-variant-additions.yml"
+  schedule:
+    - cron: "30 18 * * *" # 03:30 JST daily fallback
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -25,6 +28,13 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      - name: Skip when durable source data is already on main
+        run: |
+          git fetch origin main
+          if git ls-tree -r --name-only origin/main -- data/verified-variant-additions | grep -q "catalog-additions.json"; then
+            echo "Verified additions are already stored on main."
+            exit 0
+          fi
       - name: Download validated candidate artifact
         uses: actions/download-artifact@v4
         with:
