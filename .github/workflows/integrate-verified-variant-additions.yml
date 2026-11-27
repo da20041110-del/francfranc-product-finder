@@ -28,14 +28,18 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Skip when durable source data is already on main
+      - name: Check whether durable source data is already on main
+        id: durable-check
         run: |
           git fetch origin main
           if git ls-tree -r --name-only origin/main -- data/verified-variant-additions | grep -q "catalog-additions.json"; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
             echo "Verified additions are already stored on main."
-            exit 0
+          else
+            echo "already=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Download validated candidate artifact
+        if: steps.durable-check.outputs.already != 'true'
         uses: actions/download-artifact@v4
         with:
           name: francfranc-original-variant-revalidation-test
@@ -45,14 +49,17 @@ jobs:
           run-id: 45281717803
 
       - name: Set up Node.js
+        if: steps.durable-check.outputs.already != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - name: Validate every candidate and its image features
+        if: steps.durable-check.outputs.already != 'true'
         run: node scripts/merge-verified-variant-additions.mjs
 
       - name: Store validated source data in the repository
+        if: steps.durable-check.outputs.already != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: catalog/durable-verified-additions-data-${{ github.run_id }}
